@@ -96,7 +96,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Consumer<DeviceManager>(
         builder: (context, deviceManager, _) {
-          // 仮のデータ（あとで DB から取得する想定）
+          // 仮のデータ（あとで db から取得する想定）
           // final List<Map<String, String>> row = [
           //   {
           //     'macAddress': DatabaseHelper.columnDeviceAddress,
