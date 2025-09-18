@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:test3/db/database_helper1.dart';
 import 'package:intl/intl.dart'; //時刻で使った
+import 'db/database_helper1.dart';
+import 'db/device_dao.dart';
+import 'db/reception_dao.dart';
 
 class DetailPage extends StatefulWidget {
   final String macAddress;
@@ -14,6 +16,8 @@ class DetailPage extends StatefulWidget {
 
 class _DetailPageState extends State<DetailPage> {
   final dbHelper = DatabaseHelper.instance;
+  late final deviceDao = DeviceDao(dbHelper);
+  late final receptionDao = ReceptionDao(dbHelper);
   late TextEditingController nameController;
 
   @override
@@ -21,9 +25,9 @@ class _DetailPageState extends State<DetailPage> {
     super.initState();
     //テキストフィールドの初期表示
     nameController = TextEditingController(
-      text: (widget.name != null && widget.name!.isNotEmpty)
-          ? widget.name!
-          : "",
+        text: (widget.name != null && widget.name!.isNotEmpty)
+            ? widget.name!
+            : ""
     );
   }
 
@@ -37,10 +41,7 @@ class _DetailPageState extends State<DetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'ChuChuCheckApp',
-          style: TextStyle(color: Colors.white, fontSize: 32),
-        ),
+        title: const Text('ChuChuCheckApp', style: TextStyle(color: Colors.white, fontSize: 32)),
         backgroundColor: Colors.green,
       ),
       body: Column(
@@ -55,10 +56,7 @@ class _DetailPageState extends State<DetailPage> {
                 Padding(
                   padding: const EdgeInsets.only(left: 20, top: 4, bottom: 100),
                   // ← 値だけインデント
-                  child: Text(
-                    widget.macAddress,
-                    style: const TextStyle(fontSize: 24),
-                  ),
+                  child: Text(widget.macAddress, style: const TextStyle(fontSize: 24)),
                 ),
 
                 // --- Name ---
@@ -83,9 +81,7 @@ class _DetailPageState extends State<DetailPage> {
                           minimumSize: const Size(150, 80),
                           backgroundColor: const Color(0xFF32CD32),
                           foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(0),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
                         ),
                         child: const Text('Subscribe'),
                       ),
@@ -96,9 +92,7 @@ class _DetailPageState extends State<DetailPage> {
                           minimumSize: const Size(150, 80),
                           backgroundColor: const Color(0xFF999966),
                           foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(0),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
                         ),
                         child: const Text('Unsubscribe'),
                       ),
@@ -117,10 +111,7 @@ class _DetailPageState extends State<DetailPage> {
           mainAxisAlignment: MainAxisAlignment.end, // 中央寄せ
           children: const [
             SizedBox(width: 8), // アイコンと文字の間隔
-            Text(
-              "Powered by Signpost Co., Ltd.",
-              style: TextStyle(fontSize: 14),
-            ),
+            Text("Powered by Signpost Co., Ltd.", style: TextStyle(fontSize: 14)),
             Icon(Icons.image, size: 20),
           ],
         ),
@@ -128,18 +119,13 @@ class _DetailPageState extends State<DetailPage> {
     );
   }
 
-  // subscribeボタンクリック
+  // subscribe ボタンクリック
   void _insOrReplace() async {
-    DateTime now = DateTime.now(); //現在の時刻をDateTime型で取得
-    String datetime = DateFormat(
-      'yyyy/MM/dd HH:mm:ss',
-    ).format(now);
+    DateTime now = DateTime.now(); //現在の時刻を DateTime 型で取得
+    String datetime = DateFormat('yyyy/MM/dd HH:mm:ss').format(now);
     final nameText = nameController.text; //テキストフィールドに入力された名前を取得
 
-    Map<String, dynamic> rowdev = {
-      DatabaseHelper.columnDeviceAddress: widget.macAddress,
-      DatabaseHelper.columnName: nameText,
-    };
+    Map<String, dynamic> rowdev = {DatabaseHelper.columnDeviceAddress: widget.macAddress, DatabaseHelper.columnName: nameText};
 
     Map<String, dynamic> rowrec = {
       DatabaseHelper.columnReceptionAddress: widget.macAddress,
@@ -147,17 +133,17 @@ class _DetailPageState extends State<DetailPage> {
       DatabaseHelper.columnDate: datetime,
       DatabaseHelper.columnBattery: 330, //テストデータ
     };
-    await dbHelper.insertDevice(rowdev);
-    await dbHelper.insertReception(rowrec);
+    await deviceDao.insertDevice(rowdev);
+    await receptionDao.insertReception(rowrec);
     print('テストデータを登録しました');
 
     Navigator.pop(context, true); //登録完了フラグを前ページに渡す
   }
 
-  // unsubscribeボタンクリック
+  // unsubscribe ボタンクリック
   void _delete() async {
-    await dbHelper.deleteDevice(widget.macAddress);
-    await dbHelper.deleteReception(widget.macAddress);
+    await deviceDao.deleteDevice(widget.macAddress);
+    await receptionDao.deleteReception(widget.macAddress);
     print('${widget.macAddress} を削除しました。');
     Navigator.pop(context, true); //登録完了フラグを前ページに渡す
   }

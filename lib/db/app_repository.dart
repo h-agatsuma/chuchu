@@ -2,22 +2,21 @@ import 'package:test3/db/database_helper1.dart';
 import 'package:test3/models/data.dart';
 import 'package:sqflite/sqflite.dart';
 
-
 //テーブルをまたぐ処理・モデル変換
 class AppRepository {
   final DatabaseHelper dbHelper;
 
   AppRepository(this.dbHelper);
 
-  Future<List<Data>> getAllData() async {
+  Future<List<Map<String, dynamic>>> getAllData() async {
     final db = await dbHelper.database;
     final rows = await db.rawQuery('''
     SELECT d.address, d.name, r.feed, r.updateDate, r.battery
     FROM deviceInfo d
     INNER JOIN receptionInfo r
     ON d.address = r.address
-    ''');
-    return rows.map((r) => Data.fromMap(r)).toList();
+  ''');
+    return rows; // ← Data.fromMap に変換せず、そのまま返す
   }
 
   // デバイスと受信情報、両方のテーブルにインサート・更新を行う
@@ -29,8 +28,4 @@ class AppRepository {
       await txn.insert(DatabaseHelper.tableReception, receptionRow, conflictAlgorithm: ConflictAlgorithm.replace);
     });
   }
-
-
-
-
 }
