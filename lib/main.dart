@@ -5,9 +5,9 @@ import 'DetailPage.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:test3/models/data.dart';
-import 'device_manager.dart';
-import 'package:test3/DB/app_repository.dart';
-import 'bluetooth_service.dart';
+import 'ble/device_manager.dart';
+import 'package:test3/db/app_repository.dart';
+import 'ble/bluetooth_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
