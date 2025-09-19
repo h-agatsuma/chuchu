@@ -41,7 +41,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   //final deviceManager = DeviceManager.instance;
 
-  List<Map<String, dynamic>> _query = []; // 取得データを保持
+  List<Data> _query = []; // 取得データを保持
   final myController = TextEditingController(); //TextField の値を取得、変更、リセットできる
 
   @override
@@ -150,7 +150,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             // final device = devices[index]; //Bluetooth で受信したデバイスのデータ。DB の情報とのマージ必要？
 
                             //DB から取り出した 16 進数を String 型にする
-                            final String battery16 = row[battery]
+                            final String battery16 = row.battery
                                 .toString()
                                 .toUpperCase();
                             //16 進数を％に計算
@@ -159,13 +159,14 @@ class _MyHomePageState extends State<MyHomePage> {
                             );
 
                             //更新日時を String 型に変換
-                            final dateTimeString = row[date] as String;
+                            // final dateTimeString = row[date] as String;
+                            final displayString = DateFormat('yyyy/MM/dd\nHH:mm:ss').format(row.updateDate);
 
                             //日時表示用。日付と時刻の間のスペースを改行に置き換える
-                            String displayString = dateTimeString.replaceFirst(
-                              ' ',
-                              '\n',
-                            );
+                            // String displayString = dateTimeString.replaceFirst(
+                            //   ' ',
+                            //   '\n',
+                            // );
 
                             return InkWell(
                               onLongPress: () async {
@@ -173,8 +174,8 @@ class _MyHomePageState extends State<MyHomePage> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => DetailPage(
-                                      name: row[name],
-                                      macAddress: row[address]!,
+                                      name: row.name,
+                                      macAddress: row.address!,
                                     ),
                                   ),
                                 );
@@ -201,10 +202,10 @@ class _MyHomePageState extends State<MyHomePage> {
                                       SizedBox(
                                         width: 100,
                                         child: Text(
-                                          (row[name] != null &&
-                                                  row[name]!.isNotEmpty)
-                                              ? row[name]!
-                                              : row[address]!,
+                                          (row.name != null &&
+                                                  row.name!.isNotEmpty)
+                                              ? row.name!
+                                              : row.address!,
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
@@ -213,7 +214,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                         child: Center(
                                           child: Text(
                                             int.tryParse(
-                                                      row[feed].toString(),
+                                                      row.feed.toString(),
                                                     ) ==
                                                     0
                                                 ? 'NO LEFT'
@@ -274,9 +275,9 @@ class _MyHomePageState extends State<MyHomePage> {
     final dbHelper = DatabaseHelper.instance;
     final repo = AppRepository(dbHelper);
     //dbHelper.queryAllRows() の戻り値が読み取り専用のため、リストをコピーしてからソートする。
-    final rows = await repo.getAllData();
+    final rows = await repo.getAllData(); //data 型
     // List.unmodifiable ではなく、明示的にコピーする
-    final allRows = List<Map<String, dynamic>>.from(rows);
+    final allRows = rows;
     //final allRows = await dbHelper.queryAllRows();
     //print('全てのデータを照会しました。');
     // for (final row in allRows) {
@@ -286,8 +287,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
     // 名前あり優先で並べ替え
     allRows.sort((a, b) {
-      final nameA = a['name'];
-      final nameB = b['name'];
+      final nameA = a.name;
+      final nameB = b.name;
 
       final hasNameA = nameA != null && nameA.toString().trim().isNotEmpty;
       final hasNameB = nameB != null && nameB.toString().trim().isNotEmpty;

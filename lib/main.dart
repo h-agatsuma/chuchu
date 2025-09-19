@@ -28,7 +28,7 @@ void main() {
         Provider<AppRepository>.value(value: repo),
         Provider<BluetoothService>.value(value: btService),
         ChangeNotifierProvider<DeviceManager>(
-          create: (_) => DeviceManager(repo: repo, bluetoothService: btService)..loadAll(),
+          create: (_) => DeviceManager(repo: repo, bluetoothService: btService)//..loadAll(),
           // dispose: (_, m) => m.dispose(), // DeviceManager が dispose を持つなら明示的に
         ),
       ],

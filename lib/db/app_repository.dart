@@ -8,7 +8,7 @@ class AppRepository {
 
   AppRepository(this.dbHelper);
 
-  Future<List<Map<String, dynamic>>> getAllData() async {
+  Future<List<Data>> getAllData() async {
     final db = await dbHelper.database;
     final rows = await db.rawQuery('''
     SELECT d.address, d.name, r.feed, r.updateDate, r.battery
@@ -16,7 +16,7 @@ class AppRepository {
     INNER JOIN receptionInfo r
     ON d.address = r.address
   ''');
-    return rows; // ← Data.fromMap に変換せず、そのまま返す
+    return rows.map((r) => Data.fromMap(r)).toList(); //Data 型使用
   }
 
   // デバイスと受信情報、両方のテーブルにインサート・更新を行う

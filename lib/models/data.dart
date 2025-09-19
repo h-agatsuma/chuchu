@@ -12,7 +12,13 @@ class Data {
   Data({required this.address, this.name, required this.updateDate, required this.feed, required this.battery, this.manufacturerData});
 
   //「Map（DB の行や JSON など）から Data のインスタンスを作る」ためのコンストラクタ。読み込み用
-  factory Data.fromMap(Map<String, dynamic> m) => Data(address: m['address'] as String, name: m['name'] as String, updateDate: DateFormat('yyyy/MM/dd HH:mm:ss').parse(m['updateDate'] as String), feed: m['feed'] as int, battery: int.parse(m['battery'] as String, radix: 16));
+  factory Data.fromMap(Map<String, dynamic> m) => Data(
+    address: m['address'] as String,
+    name: m['name'] as String,
+    updateDate: DateFormat('yyyy/MM/dd HH:mm:ss').parse(m['updateDate'] as String),
+    feed: m['feed'] as int,
+    battery: int.parse(m['battery'] as String, radix: 16),
+  );
 
   //Data のインスタンスを Map に変換する⇒DB への挿入、JSON 化に使う。保存・送信用
   Map<String, dynamic> toMap() => {'address': address, 'name': name, 'updateDate': updateDate.toIso8601String(), 'feed': feed, 'battery': battery};
