@@ -65,22 +65,6 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Consumer<DeviceManager>(
       builder: (context, deviceManager, _) {
-        // 仮のデータ（あとで db から取得する想定）
-        // final List<Map<String, String>> row = [
-        //   {
-        //     'macAddress': DatabaseHelper.columnDeviceAddress,
-        //     'name': DatabaseHelper.columnName,
-        //     'status': DatabaseHelper.columnFeed,
-        //     'battery': DatabaseHelper.columnBattery,
-        //   },
-        //   {
-        //     'macAddress': 'F3:46:B4:FF:23:34:84:4A',
-        //     'name': "",
-        //     'status': 'Noleft',
-        //     'battery': '5%',
-        //     'update': '25/09/31\n12:00:12',
-        //   },
-        // ];
 
         final date = DatabaseHelper.columnDate;
         final address = DatabaseHelper.columnDeviceAddress;
@@ -353,25 +337,3 @@ class _MyHomePageState extends State<MyHomePage> {
     return battery.clamp(0, 100); //範囲を 0 から 100 に
   }
 }
-
-// // 照会ボタンクリック
-// void _battery() async {
-//
-//
-//   // 名前あり優先で並べ替え
-//   allRows.sort((a, b) {
-//     final nameA = a['name'];
-//     final nameB = b['name'];
-//
-//     final hasNameA = nameA != null && nameA.toString().trim().isNotEmpty;
-//     final hasNameB = nameB != null && nameB.toString().trim().isNotEmpty;
-//
-//     if (hasNameA && !hasNameB) return -1; // A が null じゃなくて、B が null なら A を前に
-//     if (!hasNameA && hasNameB) return 1; // A が null で、B が null じゃないなら B を前に
-//     return 0; // どちらも同じなら順番変更なし
-//   });
-//
-//   setState(() {
-//     _query = allRows; //_query という配列にデータを格納
-//   });
-// }
