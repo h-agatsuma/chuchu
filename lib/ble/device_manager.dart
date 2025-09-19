@@ -37,11 +37,8 @@ class DeviceManager extends ChangeNotifier {
 
   Future<void> loadAll() async {
     final list = await repo.getAllData(); // List<Map<String, dynamic>>
-
-    _data
-      ..clear()
-      ..addEntries(list.map((row) => MapEntry(row['address'] as String, Data.fromMap(row))));
-
+    //既存の Map _data を空にして、キーを d.address、値を item にした MapEntry に、DB から取得したデータの要素を変換して一括で追加する
+    _data..clear()..addEntries(list.map((Data item) => MapEntry(item.address, item))); //DB から取得したリストが Map に入る
     notifyListeners();
   }
 
