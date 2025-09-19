@@ -30,7 +30,9 @@ class _MyHomePageState extends State<MyHomePage> {
     final statusConnect = await Permission.bluetoothConnect.request();
     final statusLocation = await Permission.locationWhenInUse.request();
 
-    if (statusScan.isGranted && statusConnect.isGranted && statusLocation.isGranted) {
+    if (statusScan.isGranted &&
+        statusConnect.isGranted &&
+        statusLocation.isGranted) {
       context.read<DeviceManager>().startScan();
     } else {
       print('必要な権限が許可されていません');
@@ -65,7 +67,6 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Consumer<DeviceManager>(
       builder: (context, deviceManager, _) {
-
         final date = DatabaseHelper.columnDate;
         final address = DatabaseHelper.columnDeviceAddress;
         final name = DatabaseHelper.columnName;
@@ -80,7 +81,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('ChuChuCheckApp', style: TextStyle(color: Colors.white, fontSize: 25)),
+            title: const Text(
+              'ChuChuCheckApp',
+              style: TextStyle(color: Colors.white, fontSize: 25),
+            ),
             backgroundColor: Colors.green,
             actions: [
               TextButton(
@@ -91,7 +95,10 @@ class _MyHomePageState extends State<MyHomePage> {
                     deviceManager.startScan();
                   }
                 },
-                child: Text(isScanning ? 'STOP SCANNING' : 'SCAN', style: TextStyle(fontSize: 18, color: Colors.yellow)),
+                child: Text(
+                  isScanning ? 'STOP SCANNING' : 'SCAN',
+                  style: TextStyle(fontSize: 18, color: Colors.yellow),
+                ),
               ),
             ],
           ),
@@ -100,14 +107,28 @@ class _MyHomePageState extends State<MyHomePage> {
               // ヘッダー行
               Container(
                 color: Colors.grey[300],
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 12,
+                ),
                 child: Row(
                   children: const [
                     SizedBox(width: 40, child: Icon(Icons.bolt)),
-                    Expanded(flex: 2, child: Text('Address/Name', textAlign: TextAlign.center)),
-                    Expanded(flex: 2, child: Text('Bait\nStatus', textAlign: TextAlign.center)),
-                    Expanded(child: Text('Battery\nLv', textAlign: TextAlign.center)),
-                    Expanded(flex: 2, child: Text('Last\nUpdate', textAlign: TextAlign.center)),
+                    Expanded(
+                      flex: 2,
+                      child: Text('Address/Name', textAlign: TextAlign.center),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text('Bait\nStatus', textAlign: TextAlign.center),
+                    ),
+                    Expanded(
+                      child: Text('Battery\nLv', textAlign: TextAlign.center),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text('Last\nUpdate', textAlign: TextAlign.center),
+                    ),
                   ],
                 ),
               ),
@@ -129,30 +150,32 @@ class _MyHomePageState extends State<MyHomePage> {
                             // final device = devices[index]; //Bluetooth で受信したデバイスのデータ。DB の情報とのマージ必要？
 
                             //DB から取り出した 16 進数を String 型にする
-                            final String battery16 = row[battery].toString().toUpperCase();
+                            final String battery16 = row[battery]
+                                .toString()
+                                .toUpperCase();
                             //16 進数を％に計算
-                            final int batteryPercent = convertBatteryPercent(battery16);
-
-                            // final macAddress = DatabaseHelper.columnDeviceAddress;
-                            // final name = DatabaseHelper.columnName;
-                            // 'status': DatabaseHelper.columnFeed,
-                            // 'battery': DatabaseHelper.columnBattery,
-
-                            // final dateTimeString =
-                            //     row[DatabaseHelper.columnDate] as String;
+                            final int batteryPercent = convertBatteryPercent(
+                              battery16,
+                            );
 
                             //更新日時を String 型に変換
                             final dateTimeString = row[date] as String;
 
                             //日時表示用。日付と時刻の間のスペースを改行に置き換える
-                            String displayString = dateTimeString.replaceFirst(' ', '\n');
+                            String displayString = dateTimeString.replaceFirst(
+                              ' ',
+                              '\n',
+                            );
 
                             return InkWell(
                               onLongPress: () async {
                                 final result = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => DetailPage(name: row[name], macAddress: row[address]!),
+                                    builder: (context) => DetailPage(
+                                      name: row[name],
+                                      macAddress: row[address]!,
+                                    ),
                                   ),
                                 );
                                 if (result == true) {
@@ -175,10 +198,43 @@ class _MyHomePageState extends State<MyHomePage> {
                                         //  ),
                                         child: Icon(Icons.bolt),
                                       ),
-                                      SizedBox(width: 100, child: Text((row[name] != null && row[name]!.isNotEmpty) ? row[name]! : row[address]!, overflow: TextOverflow.ellipsis)),
-                                      SizedBox(width: 80, child: Center(child: Text(int.tryParse(row[feed].toString()) == 0 ? 'NO LEFT' : 'LEFT'))),
-                                      SizedBox(width: 70, child: Center(child: Text('${batteryPercent.toString()}%'))),
-                                      SizedBox(width: 80, child: Center(child: Text(displayString))),
+                                      SizedBox(
+                                        width: 100,
+                                        child: Text(
+                                          (row[name] != null &&
+                                                  row[name]!.isNotEmpty)
+                                              ? row[name]!
+                                              : row[address]!,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 80,
+                                        child: Center(
+                                          child: Text(
+                                            int.tryParse(
+                                                      row[feed].toString(),
+                                                    ) ==
+                                                    0
+                                                ? 'NO LEFT'
+                                                : 'LEFT',
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 70,
+                                        child: Center(
+                                          child: Text(
+                                            '${batteryPercent.toString()}%',
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 80,
+                                        child: Center(
+                                          child: Text(displayString),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -200,36 +256,11 @@ class _MyHomePageState extends State<MyHomePage> {
                 //insert メソッド使わない場合は const つけてもエラー出ない
                 SizedBox(width: 8),
                 // アイコンと文字の間隔
-                Text("Powered by Signpost Co., Ltd.", style: TextStyle(fontSize: 14)),
+                Text(
+                  "Powered by Signpost Co., Ltd.",
+                  style: TextStyle(fontSize: 14),
+                ),
                 Icon(Icons.image, size: 20),
-
-                // //テキストフィールド
-                // TextField(controller: myController),
-                // // ボタン群
-                // Padding(
-                //   padding: const EdgeInsets.all(8.0),
-                //   child: Row(
-                //     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                //     children: <Widget>[
-                //       ElevatedButton(
-                //         child: Text('登録', style: TextStyle(fontSize: 20)),
-                //         onPressed: _insert,
-                //       ),
-                //       // ElevatedButton(
-                //       //   child: Text('照会', style: TextStyle(fontSize: 20)),
-                //       //   onPressed: _queryData,
-                //       // ),
-                //       // ElevatedButton(
-                //       //   child: Text('更新', style: TextStyle(fontSize: 20)),
-                //       //   onPressed: _update,
-                //       // ),
-                //       // ElevatedButton(
-                //       //   child: Text('削除', style: TextStyle(fontSize: 20)),
-                //       //   onPressed: _delete,
-                //       // ),
-                //     ],
-                //   ),
-                // ),
               ],
             ),
           ),
@@ -238,33 +269,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  //
-  // // 登録ボタンクリック
-  // void _insert() async {
-  //   DateTime now = DateTime.now(); //現在の時刻を DateTime 型で取得
-  //   String datetime = DateFormat(
-  //     'yyyy/MM/dd HH:mm:ss',
-  //   ).format(now); //現在時刻をフォーマットしたものを String 型の変数に格納
-  //
-  //   Map<String, dynamic> rowdev = {
-  //     DatabaseHelper.columnDeviceAddress: '66:BB:CC:DD:EE:FF', // ダミーMAC アドレス
-  //     // DatabaseHelper.columnName: 'テストデバイス',
-  //   };
-  //
-  //   Map<String, dynamic> rowrec = {
-  //     DatabaseHelper.columnReceptionAddress: '66:BB:CC:DD:EE:FF',
-  //     // ダミーMAC アドレス
-  //     DatabaseHelper.columnFeed: 2,
-  //     DatabaseHelper.columnDate: datetime,
-  //     DatabaseHelper.columnBattery: 380,
-  //   };
-  //   await dbHelper.insertDevice(rowdev);
-  //   await dbHelper.insertReception(rowrec);
-  //   print('テストデータを登録しました');
-  //   _queryData();
-  // }
-  //
-  // 照会ボタンクリック
+  // 照会
   void _queryData() async {
     final dbHelper = DatabaseHelper.instance;
     final repo = AppRepository(dbHelper);
@@ -296,37 +301,6 @@ class _MyHomePageState extends State<MyHomePage> {
       _query = allRows; //_query という配列にデータを格納
     });
   }
-
-  //
-  // // 更新ボタンクリック
-  // void _update() async {
-  //   DateTime now = DateTime.now();
-  //   DateFormat format = DateFormat('yyyy/MM/dd HH:mm:ss');
-  //   String datetime = format.format(now);
-  //   final nameText = myController.text; //更新ボタンが押されたときに、画面で入力されたテキストを取得
-  //   Map<String, dynamic> rowdev = {
-  //     DatabaseHelper.columnDeviceAddress: 'AA:BB:CC:DD:EE:FF', // ダミーMAC アドレス
-  //     DatabaseHelper.columnName: nameText, //取得したテキストを DB に登録
-  //   };
-  //   Map<String, dynamic> rowrec = {
-  //     DatabaseHelper.columnReceptionAddress: 'AA:BB:CC:DD:EE:FF',
-  //     // ダミーMAC アドレス
-  //     DatabaseHelper.columnFeed: 0,
-  //     DatabaseHelper.columnDate: datetime,
-  //     DatabaseHelper.columnBattery: 80,
-  //   };
-  //   final rowsAffected = await dbHelper.updateDevice(rowdev);
-  //   await dbHelper.updateReception(rowrec);
-  //   print('更新しました。 $rowsAffected 件のデータを更新しました。 ');
-  // }
-  //
-  // // 削除ボタンクリック
-  // void _delete() async {
-  //   const address = "AA:BB:CC:DD:EE:FF"; // 削除したい MAC アドレス テスト用
-  //   final rowsDeleted = await dbHelper.deleteDevice(address);
-  //   await dbHelper.deleteReception(address);
-  //   print('削除しました。 $rowsDeleted 件のデータを削除しました。');
-  // }
 
   //バッテリーを 16 進数から％に計算
   int convertBatteryPercent(String strBattery) {
