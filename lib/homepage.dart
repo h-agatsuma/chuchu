@@ -39,22 +39,95 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  //final deviceManager = DeviceManager.instance;
-
-  List<Data> _query = []; // 取得データを保持
+  List<Data> _dbData = []; // 取得データを保持
+  List<Data> _query = []; //ソート後のデータを保持
   final myController = TextEditingController(); //TextField の値を取得、変更、リセットできる
+  bool _sortedByName = false;
+  late final AppRepository repo;
 
   @override
   void initState() {
     super.initState();
+    repo = AppRepository(DatabaseHelper.instance); // クラスフィールドにセット
     _initDb();
-    // requestPermissions(); //最初に必要な権限をリクエスト
-    _queryData(); // ←  初期化時にリスト表示
+    requestPermissions(); //最初に必要な権限をリクエスト
   }
 
+  //データ照会（initStateで使う）
   Future<void> _initDb() async {
     await DatabaseHelper.instance.database; // ここで DB が無ければ作られる
     debugPrint('DB 初期化完了');
+
+    final rows = await repo.getAllData(); //照会メソッドを呼び出し、データを格納
+
+    //マウントされていない＝ウィジェットが画面上にないときはreturn。setStateを呼ばない。
+    if (!mounted) return;
+    setState(() {
+      _dbData = rows;
+      _query = List<Data>.from(_dbData);
+      _sortedByName = false; // 起動時はソートなしなのでfalse
+    });
+  }
+
+  //汎用の再取得メソッド 詳細画面から戻ってきたときにも使う
+  Future<void> _refreshData() async {
+    final rows = await repo.getAllData();
+    if (!mounted) return;
+
+    // 常に原データを更新
+    _dbData = rows;
+
+    if (_sortedByName) {
+      // ソート適用して表示用にセット
+      _query = _nameSort(List<Data>.from(_dbData));
+    } else {
+      // DBの順（最新）で表示
+      _query = List<Data>.from(_dbData);
+    }
+
+    setState(() {});
+  }
+
+  //ソート
+  List<Data> _nameSort(List<Data> allRows) {
+    final indexed = allRows
+        .asMap()
+        .entries
+        .toList(); // MapEntry<int, Data> インデックスと値がセットになったリスト
+
+    // 名前あり優先で並べ替え　インデックス：元の順番（元の順に戻すなら使用）
+    indexed.sort((a, b) {
+      final nameA = (a.value.name ?? '').trim();
+      final nameB = (b.value.name ?? '').trim();
+
+      final hasNameA = nameA.isNotEmpty;
+      final hasNameB = nameB.isNotEmpty;
+
+      if (hasNameA && !hasNameB) return -1; // A が null じゃなくて、B が null なら A を前に
+      if (!hasNameA && hasNameB) return 1; // A が null で、B が null じゃないなら B を前に
+      if (!hasNameA && !hasNameB) return 0; // 両方名前なしなら同順位
+
+      // 両方名前あり -> アルファベット順（大文字小文字を区別しない）
+      final cmp = nameA.toLowerCase().compareTo(nameB.toLowerCase());
+      if (cmp != 0) return cmp; //アルファベット順でソートする
+      return a.key.compareTo(b.key); //同じ名前はインデックス順でソートする
+    });
+
+    //リストの中のvalue(中身)だけをリストにして渡す
+    return indexed.map((e) => e.value).toList();
+  }
+
+  //ボタンによる切替メソッド
+  void _toggleSortByName() {
+    setState(() {
+      if (!_sortedByName) {
+        _query = _nameSort(List<Data>.from(_dbData));
+        _sortedByName = true; //ボタンが押されたときfalseならtrueに変える
+      } else {
+        _query = List<Data>.from(_dbData);
+        _sortedByName = false; //trueならfalseに変える
+      }
+    });
   }
 
   @override
@@ -76,8 +149,6 @@ class _MyHomePageState extends State<MyHomePage> {
         //DeviceManager からのデータを受け取る
         //探索中かどうか
         final isScanning = deviceManager.isScanning;
-        //実際に入っているデータ
-        // final devices = deviceManager.getAllData();
 
         return Scaffold(
           appBar: AppBar(
@@ -112,11 +183,17 @@ class _MyHomePageState extends State<MyHomePage> {
                   horizontal: 12,
                 ),
                 child: Row(
-                  children: const [
+                  children: [
                     SizedBox(width: 40, child: Icon(Icons.bolt)),
                     Expanded(
                       flex: 2,
-                      child: Text('Address/Name', textAlign: TextAlign.center),
+                      child: GestureDetector(
+                        onTap: _toggleSortByName, //ソート切替ボタンが押されたら
+                        child: Text(
+                          'Address/Name',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                     ),
                     Expanded(
                       flex: 2,
@@ -160,7 +237,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
                             //更新日時を String 型に変換
                             // final dateTimeString = row[date] as String;
-                            final displayString = DateFormat('yyyy/MM/dd\nHH:mm:ss').format(row.updateDate);
+                            final displayString = DateFormat(
+                              'yyyy/MM/dd\nHH:mm:ss',
+                            ).format(row.updateDate);
 
                             //日時表示用。日付と時刻の間のスペースを改行に置き換える
                             // String displayString = dateTimeString.replaceFirst(
@@ -180,7 +259,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                   ),
                                 );
                                 if (result == true) {
-                                  _queryData();
+                                  await _refreshData(); //データ再取得用
                                 }
                               },
 
@@ -213,9 +292,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                         width: 80,
                                         child: Center(
                                           child: Text(
-                                            int.tryParse(
-                                                      row.feed.toString(),
-                                                    ) ==
+                                            int.tryParse(row.feed.toString()) ==
                                                     0
                                                 ? 'NO LEFT'
                                                 : 'LEFT',
@@ -268,39 +345,6 @@ class _MyHomePageState extends State<MyHomePage> {
         );
       },
     );
-  }
-
-  // 照会
-  void _queryData() async {
-    final dbHelper = DatabaseHelper.instance;
-    final repo = AppRepository(dbHelper);
-    //dbHelper.queryAllRows() の戻り値が読み取り専用のため、リストをコピーしてからソートする。
-    final rows = await repo.getAllData(); //data 型
-    // List.unmodifiable ではなく、明示的にコピーする
-    final allRows = rows;
-    //final allRows = await dbHelper.queryAllRows();
-    //print('全てのデータを照会しました。');
-    // for (final row in allRows) {
-    //   print('row: $row');
-    //   print('keys: ${row.keys}');
-    // }
-
-    // 名前あり優先で並べ替え
-    allRows.sort((a, b) {
-      final nameA = a.name;
-      final nameB = b.name;
-
-      final hasNameA = nameA != null && nameA.toString().trim().isNotEmpty;
-      final hasNameB = nameB != null && nameB.toString().trim().isNotEmpty;
-
-      if (hasNameA && !hasNameB) return -1; // A が null じゃなくて、B が null なら A を前に
-      if (!hasNameA && hasNameB) return 1; // A が null で、B が null じゃないなら B を前に
-      return 0; // どちらも同じなら順番変更なし
-    });
-
-    setState(() {
-      _query = allRows; //_query という配列にデータを格納
-    });
   }
 
   //バッテリーを 16 進数から％に計算
