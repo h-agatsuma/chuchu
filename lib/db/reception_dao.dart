@@ -42,6 +42,50 @@ class ReceptionDao{
     );
   }
 
+  //受信した情報バッチメソッド
+  Future<void> batchUpsertReceptions(List<Map<String, dynamic>> rows) async {
+    print('[ReceptionDao] batchUpsertReceptions called rows=${rows.length}');
+    if (rows.isEmpty) return;
+    final db = await dbHelper.database;
+    print('[ReceptionDao] DB path=${db.path}');
+
+
+    // await db.transaction((txn) async {
+    //   final batch = txn.batch();
+    //   for (final row in rows) {
+    //     batch.insert(
+    //       DatabaseHelper.tableReception,
+    //       row,
+    //       conflictAlgorithm: ConflictAlgorithm.replace,
+    //     );
+    //   }
+    //   await batch.commit(noResult: true);
+    // });
+
+    try {
+      await db.transaction((txn) async {
+        final batch = txn.batch();
+        for (final row in rows) {
+          print('[ReceptionDao] adding row keys=${row.keys} address=${row['address']} feed=${row['feed']} battery=${row['battery']} updateDate=${row['updateDate'].runtimeType}:${row['updateDate']}');
+          batch.insert(DatabaseHelper.tableReception, row, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+        print('[ReceptionDao] committing batch');
+        await batch.commit(noResult: true);
+        print('[ReceptionDao] commit done');
+      });
+
+      final count = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM ${DatabaseHelper.tableReception}'));
+      print('[ReceptionDao] reception count=$count');
+
+      final sample = await db.query(DatabaseHelper.tableReception, limit: 5);
+      print('[ReceptionDao] sample rows=$sample');
+    } catch (e, st) {
+      print('[ReceptionDao] batchUpsert failed: $e\n$st');
+      rethrow;
+    }
+  }
+
+
 
   Future<List<Map<String, dynamic>>> queryAllReceptions() async {
     final db = await dbHelper.database;

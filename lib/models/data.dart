@@ -1,27 +1,45 @@
 import 'dart:typed_data';
 import 'package:intl/intl.dart';
+import 'package:flutter/foundation.dart'; //changeNotifierのために使用
 
-class Data {
+class Data extends ChangeNotifier{
   final String address;
-  final String? name;
-  final DateTime updateDate;
-  final int feed;
-  final int battery;
-  final Uint8List? manufacturerData;
+  String? name;
+  DateTime updateDate;
+  int feed;
+  int battery;
+  Uint8List? manufacturerData;
 
   Data({required this.address, this.name, required this.updateDate, required this.feed, required this.battery, this.manufacturerData});
 
+  bool updateFrom(Data newData) {
+    //print('>>> updateFrom called for ${newData.address}');
+
+    bool changed = false;
+    if (name != newData.name) { name = newData.name; changed = true; }
+    if (feed != newData.feed) { feed = newData.feed; changed = true; }
+    if (battery != newData.battery) {debugPrint('[Data] Battery changed: ${battery} → ${newData.battery}');
+      battery = newData.battery; changed = true; }
+    if (updateDate != newData.updateDate) { updateDate = newData.updateDate; changed = true; }
+    if (changed) notifyListeners(); // 行単位での通知
+    return changed;
+  }
+
+
   //「Map（DB の行や JSON など）から Data のインスタンスを作る」ためのコンストラクタ。読み込み用
-  factory Data.fromMap(Map<String, dynamic> m) => Data(
-    address: m['address'] as String,
-    name: m['name'] as String,
-    updateDate: DateFormat('yyyy/MM/dd HH:mm:ss').parse(m['updateDate'] as String),
-    feed: m['feed'] as int,
-    battery: int.parse(m['battery'] as String, radix: 16),
-  );
+  factory Data.fromMap(Map<String, dynamic> m) => Data(address: m['address'] as String, name: m['name'] as String, updateDate: DateFormat('yyyy/MM/dd HH:mm:ss').parse(m['updateDate'] as String), feed: m['feed'] as int, battery:m['battery'] as int);
 
   //Data のインスタンスを Map に変換する⇒DB への挿入、JSON 化に使う。保存・送信用
   Map<String, dynamic> toMap() => {'address': address, 'name': name, 'updateDate': updateDate.toIso8601String(), 'feed': feed, 'battery': battery};
+
+  // reception 用の Map を返す（DB に insert/update するときに使う）
+  Map<String, dynamic> toMapForReception() => {
+    'address': address,
+    'feed': feed,
+    'battery': battery,
+    'updateDate': DateFormat('yyyy/MM/dd HH:mm:ss').format(updateDate),
+  };
+
 
   // factory を追加（受信バイト列から feed/battery を算出する実装は適宜置き換えてください）
   factory Data.fromBluetooth({required String address, required String name, required List<int> manufacturerData, bool batteryBigEndian = true}) {

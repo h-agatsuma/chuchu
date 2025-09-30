@@ -67,7 +67,7 @@ class DatabaseHelper {
             $columnReceptionAddress TEXT PRIMARY KEY,
             $columnFeed INTEGER DEFAULT 0,
             $columnDate TEXT NOT NULL DEFAULT '',
-            $columnBattery TEXT DEFAULT 0
+            $columnBattery INTEGER DEFAULT 0
           )
           ''');
 

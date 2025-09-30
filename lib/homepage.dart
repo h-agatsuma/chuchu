@@ -24,21 +24,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  //bluetooth 接続 権限リクエストメソッド
-  Future<void> requestPermissions() async {
-    final statusScan = await Permission.bluetoothScan.request();
-    final statusConnect = await Permission.bluetoothConnect.request();
-    final statusLocation = await Permission.locationWhenInUse.request();
-
-    if (statusScan.isGranted &&
-        statusConnect.isGranted &&
-        statusLocation.isGranted) {
-      context.read<DeviceManager>().startScan();
-    } else {
-      print('必要な権限が許可されていません');
-    }
-  }
-
   List<Data> _dbData = []; // 取得データを保持
   List<Data> _query = []; //ソート後のデータを保持
   final myController = TextEditingController(); //TextField の値を取得、変更、リセットできる
@@ -51,6 +36,22 @@ class _MyHomePageState extends State<MyHomePage> {
     repo = AppRepository(DatabaseHelper.instance); // クラスフィールドにセット
     _initDb();
     requestPermissions(); //最初に必要な権限をリクエスト
+  }
+
+  //bluetooth 接続 権限リクエストメソッド
+  Future<void> requestPermissions() async {
+    final statusScan = await Permission.bluetoothScan.request();
+    final statusConnect = await Permission.bluetoothConnect.request();
+    final statusLocation = await Permission.locationWhenInUse.request();
+
+    if (statusScan.isGranted &&
+        statusConnect.isGranted &&
+        statusLocation.isGranted) {
+      debugPrint('必要な権限が許可されました');
+     // context.read<DeviceManager>().startScan();
+    } else {
+      print('必要な権限が許可されていません');
+    }
   }
 
   //データ照会（initStateで使う）
@@ -67,6 +68,72 @@ class _MyHomePageState extends State<MyHomePage> {
       _query = List<Data>.from(_dbData);
       _sortedByName = false; // 起動時はソートなしなのでfalse
     });
+  }
+
+  // 長押しされたときのメソッド
+  Future<void> _openDetailAndApply(Data data) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            DetailPage(name: data.name, macAddress: data.address),
+      ),
+    );
+
+    //result：detailPageから渡される「更新されたかどうか」「アドレス」「名前」の情報
+    //名前と日時を変更
+    if (result is Map) {
+      final address = result['address'] as String?;
+      if (address == null) return;
+
+      if (result['updated'] == true) {
+        final newName = result['name'] as String? ?? '';
+
+        final idx = _dbData.indexWhere((d) => d.address == address);
+        if (idx != -1) {
+          setState(() {
+            _dbData[idx].name = newName;
+            _dbData[idx].updateDate = DateTime.now();
+            if (_sortedByName) {
+              _query = _nameSort(List<Data>.from(_dbData));
+            } else {
+              _query = List<Data>.from(_dbData);
+            }
+          });
+        } else {
+          await _refreshData();
+        }
+
+        // ライブ表示があるなら DeviceManager 側の Data も更新
+        final deviceManager = context.read<DeviceManager>();
+        if (deviceManager.contains(address)) {
+          final liveData = deviceManager.getData(address);
+          if (liveData != null) {
+            final tmp = Data(
+              address: address,
+              name: newName,
+              updateDate: DateTime.now(),
+              feed: liveData.feed,
+              battery: liveData.battery,
+              manufacturerData: liveData.manufacturerData,
+            );
+            liveData.updateFrom(tmp); // Data.notifyListeners() が行を更新
+          }
+        }
+      }
+
+      //DetailPageで削除されたとき
+      if (result['deleted'] == true) {
+        final addrDel = address;
+        setState(() {
+          _dbData.removeWhere((d) => d.address == addrDel);
+          _query = _sortedByName
+              ? _nameSort(List<Data>.from(_dbData))
+              : List<Data>.from(_dbData);
+        });
+        // 必要なら deviceManager.removeDevice(addrDel) を呼ぶ実装を作る
+      }
+    }
   }
 
   //汎用の再取得メソッド 詳細画面から戻ってきたときにも使う
@@ -139,16 +206,18 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Consumer<DeviceManager>(
-      builder: (context, deviceManager, _) {
-        final date = DatabaseHelper.columnDate;
-        final address = DatabaseHelper.columnDeviceAddress;
-        final name = DatabaseHelper.columnName;
-        final feed = DatabaseHelper.columnFeed;
-        final battery = DatabaseHelper.columnBattery;
+      builder: (context, deviceManager, child) {
+        debugPrint('[UI] Consumer rebuild count=${deviceManager.data.length}');
 
         //DeviceManager からのデータを受け取る
         //探索中かどうか
         final isScanning = deviceManager.isScanning;
+
+        //マージ後もソートがつかえるようにする。_sortedByNameがtrueのとき、ソートする。
+        final baseDbList = _sortedByName
+            ? _nameSort(List<Data>.from(_dbData))
+            : List<Data>.from(_dbData);
+        final merged = _mergeDbAndLive(baseDbList, deviceManager.data);
 
         return Scaffold(
           appBar: AppBar(
@@ -161,9 +230,14 @@ class _MyHomePageState extends State<MyHomePage> {
               TextButton(
                 onPressed: () {
                   if (isScanning) {
+                    print('[UI] スキャン停止');
                     deviceManager.stopScan();
                   } else {
-                    deviceManager.startScan();
+                    print('[UI] スキャン開始');
+                    deviceManager.startScan(
+                      simulated: true,
+                      simulatedList: bluetoothData,
+                    ); //テスト用にリストとtrue渡す
                   }
                 },
                 child: Text(
@@ -212,115 +286,38 @@ class _MyHomePageState extends State<MyHomePage> {
 
               // データ行
               Expanded(
-                child: _query.isEmpty
-                    ? Center(child: Text('データがありません'))
-                    : SizedBox(
-                        height: 70,
-                        child: ListView.separated(
-                          //区切り線有りのリスト
-                          itemCount: _query.length,
-                          separatorBuilder: (context, index) => Divider(),
-                          itemBuilder: (context, index) {
-                            final row = _query[index]; //index 番目の人の情報を格納
+                child: ListView.separated(
+                  itemCount: merged.length,
+                  separatorBuilder: (context, index) => Divider(),
+                  itemBuilder: (context, index) {
+                    final row = merged[index];
+                    final isLive = deviceManager.contains(row.address);
 
-                            //検討 アイコンの表示 isReceiving にも関係する変数
-                            // final device = devices[index]; //Bluetooth で受信したデバイスのデータ。DB の情報とのマージ必要？
-
-                            //DB から取り出した 16 進数を String 型にする
-                            final String battery16 = row.battery
-                                .toString()
-                                .toUpperCase();
-                            //16 進数を％に計算
-                            final int batteryPercent = convertBatteryPercent(
-                              battery16,
-                            );
-
-                            //更新日時を String 型に変換
-                            // final dateTimeString = row[date] as String;
-                            final displayString = DateFormat(
-                              'yyyy/MM/dd\nHH:mm:ss',
-                            ).format(row.updateDate);
-
-                            //日時表示用。日付と時刻の間のスペースを改行に置き換える
-                            // String displayString = dateTimeString.replaceFirst(
-                            //   ' ',
-                            //   '\n',
-                            // );
-
-                            return InkWell(
-                              onLongPress: () async {
-                                final result = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => DetailPage(
-                                      name: row.name,
-                                      macAddress: row.address!,
-                                    ),
-                                  ),
-                                );
-                                if (result == true) {
-                                  await _refreshData(); //データ再取得用
-                                }
-                              },
-
-                              child: SizedBox(
-                                height: 70,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Row(
-                                    children: [
-                                      SizedBox(
-                                        width: 50,
-                                        // isReceiving が true のときアイコン表示、false のとき透明に
-                                        //  child: Opacity(
-                                        //    opacity: device.isReceiving ? 1.0 : 0.0,
-                                        //    child: Icon(Icons.bolt),
-                                        //  ),
-                                        child: Icon(Icons.bolt),
-                                      ),
-                                      SizedBox(
-                                        width: 100,
-                                        child: Text(
-                                          (row.name != null &&
-                                                  row.name!.isNotEmpty)
-                                              ? row.name!
-                                              : row.address!,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 80,
-                                        child: Center(
-                                          child: Text(
-                                            int.tryParse(row.feed.toString()) ==
-                                                    0
-                                                ? 'NO LEFT'
-                                                : 'LEFT',
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 70,
-                                        child: Center(
-                                          child: Text(
-                                            '${batteryPercent.toString()}%',
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 80,
-                                        child: Center(
-                                          child: Text(displayString),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                    if (isLive) {
+                      final live = deviceManager.getData(row.address)!;
+                      return ChangeNotifierProvider.value(
+                        value: live,
+                        child: Consumer<Data>(
+                          builder: (context, d, _) {
+                            return _buildRow(
+                              context,
+                              d,
+                              true,
+                              () => _openDetailAndApply(d),
                             );
                           },
                         ),
-                      ),
+                      );
+                    } else {
+                      return _buildRow(
+                        context,
+                        row,
+                        false,
+                        () => _openDetailAndApply(row),
+                      );
+                    }
+                  },
+                ),
               ),
             ],
           ),
@@ -347,12 +344,99 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  //バッテリーを 16 進数から％に計算
-  int convertBatteryPercent(String strBattery) {
-    if (strBattery.isEmpty) return 0;
-    int raw = int.parse(strBattery, radix: 16); //16 進数の文字列を 10 進数に
-    double percent = (raw - 800) / 4; //所定の計算式
-    int battery = percent.floor(); //少数切り捨て
-    return battery.clamp(0, 100); //範囲を 0 から 100 に
+  //DBデータとBLEデータをマージ
+  List<Data> _mergeDbAndLive(List<Data> dbData, List<Data> liveData) {
+    final Map<String, Data> result = {
+      for (var d in dbData) d.address: d, // DBのデータがベース
+    };
+    for (var d in liveData) {
+      result[d.address] = d; // BLE受信データで上書き
+    }
+    return result.values.toList();
+    //..sort((a, b) => b.updateDate.compareTo(a.updateDate)); 更新日時でソートするとき
+  }
+
+  // //バッテリーを 16 進数から％に計算
+  // int convertBatteryPercent(int raw) {
+  //   double percent = (raw - 800) / 4; //所定の計算式
+  //   int battery = percent.floor(); //少数切り捨て
+  //   return battery.clamp(0, 100); //範囲を 0 から 100 に
+  // }
+}
+
+Widget _buildRow(
+  BuildContext context,
+  Data data,
+  bool isLive, [
+  VoidCallback? onLongPress,
+]) {
+  final batteryPercent = ((data.battery - 800) / 4).floor().clamp(
+    0,
+    100,
+  ); //バッテリー ％に計算
+  final displayString = DateFormat(
+    'yyyy/MM/dd\nHH:mm:ss',
+  ).format(data.updateDate);
+
+  return InkWell(
+    onLongPress: onLongPress,
+    child: SizedBox(
+      height: 70,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 50,
+              child: Icon(
+                Icons.bolt,
+                color: isLive ? Colors.black : Colors.transparent,
+              ),
+            ),
+            SizedBox(
+              width: 100,
+              child: Text(
+                (data.name?.isNotEmpty ?? false) ? data.name! : data.address,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            SizedBox(
+              width: 80,
+              child: Center(child: Text(data.feed == 0 ? 'NO LEFT' : 'LEFT')),
+            ),
+            SizedBox(width: 70, child: Center(child: Text('$batteryPercent%'))),
+            SizedBox(width: 80, child: Center(child: Text(displayString))),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+// BLE 受信中（ChangeNotifierProviderで通知あり）
+class DataRowWidget extends StatelessWidget {
+  const DataRowWidget({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final data = context.watch<Data>();
+
+    return _buildRow(context, data, true);
+  }
+}
+
+// DBのみ（通知なし）
+class StaticDataRow extends StatelessWidget {
+  final Data data;
+
+  const StaticDataRow({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return _buildRow(context, data, false, () async {
+      // 詳細画面を開けるようにする（必要なら）
+      final homeState = context.findAncestorStateOfType<_MyHomePageState>();
+      if (homeState != null) await homeState._openDetailAndApply(data);
+    });
   }
 }

@@ -137,7 +137,13 @@ class _DetailPageState extends State<DetailPage> {
     await receptionDao.insertReception(rowrec);
     print('テストデータを登録しました');
 
-    Navigator.pop(context, true); //登録完了フラグを前ページに渡す
+    // Navigator.pop(context, true); //登録完了フラグを前ページに渡す
+    Navigator.pop(context, {
+      'updated': true,
+      'address': widget.macAddress,
+      'name': nameText,
+    });
+
   }
 
   // unsubscribe ボタンクリック
@@ -145,6 +151,9 @@ class _DetailPageState extends State<DetailPage> {
     await deviceDao.deleteDevice(widget.macAddress);
     await receptionDao.deleteReception(widget.macAddress);
     print('${widget.macAddress} を削除しました。');
-    Navigator.pop(context, true); //登録完了フラグを前ページに渡す
-  }
+    // Navigator.pop(context, true); //登録完了フラグを前ページに渡す
+    Navigator.pop(context, {
+      'deleted': true,
+      'address': widget.macAddress,
+    });}
 }
