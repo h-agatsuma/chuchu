@@ -25,6 +25,41 @@ class Data extends ChangeNotifier{
     return changed;
   }
 
+// --- 部分更新メソッド ---
+  bool updateBatteryOnly(int newBattery, DateTime newDate) {
+    if (battery != newBattery || updateDate != newDate) {
+      battery = newBattery;
+      updateDate = newDate;
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+
+  bool updateFeedOnly(int newFeed, DateTime newDate) {
+    if (feed != newFeed || updateDate != newDate) {
+      feed = newFeed;
+      updateDate = newDate;
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  bool updateBoth(int newFeed, int newBattery, DateTime newDate) {
+    var changed = false;
+    if (feed != newFeed) { feed = newFeed; changed = true; }
+    if (battery != newBattery) { battery = newBattery; changed = true; }
+    if (updateDate != newDate) { updateDate = newDate; changed = true; }
+    if (changed) {
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+
 
   //「Map（DB の行や JSON など）から Data のインスタンスを作る」ためのコンストラクタ。読み込み用
   factory Data.fromMap(Map<String, dynamic> m) => Data(address: m['address'] as String, name: m['name'] as String, updateDate: DateFormat('yyyy/MM/dd HH:mm:ss').parse(m['updateDate'] as String), feed: m['feed'] as int, battery:m['battery'] as int);
