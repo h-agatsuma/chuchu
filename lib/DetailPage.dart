@@ -5,12 +5,6 @@ import 'db/device_dao.dart';
 import 'db/reception_dao.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 
-// final nameValidator = MultiValidator([
-//   MaxLengthValidator(30,errorText: "30文字以下で入力してください")
-// ]);
-
-
-
 class DetailPage extends StatefulWidget {
   final String macAddress;
   final String? name;
@@ -139,23 +133,11 @@ class _DetailPageState extends State<DetailPage> {
 
   // subscribe ボタンクリック
   void _insOrReplace() async {
-    DateTime now = DateTime.now(); //現在の時刻を DateTime 型で取得
-    //String datetime = DateFormat('yyyy/MM/dd HH:mm:ss').format(now);
     final nameText = nameController.text; //テキストフィールドに入力された名前を取得
-
     Map<String, dynamic> rowdev = {DatabaseHelper.columnDeviceAddress: widget.macAddress, DatabaseHelper.columnName: nameText};
-
-    // Map<String, dynamic> rowrec = {
-    //   DatabaseHelper.columnReceptionAddress: widget.macAddress,
-    //   DatabaseHelper.columnFeed: 0, //テストデータ
-    //   DatabaseHelper.columnDate: datetime,
-    //   DatabaseHelper.columnBattery: 330, //テストデータ
-    // };
     await deviceDao.upsertDevice(rowdev);
-    //await receptionDao.insertReception(rowrec);
-    print('テストデータを登録しました');
 
-    // Navigator.pop(context, true); //登録完了フラグを前ページに渡す
+//登録完了フラグを前ページに渡す
     Navigator.pop(context, {
       'updated': true,
       'address': widget.macAddress,
@@ -168,7 +150,7 @@ class _DetailPageState extends State<DetailPage> {
   void _delete() async {
     await deviceDao.deleteDevice(widget.macAddress);
     print('${widget.macAddress} を削除しました。');
-    // Navigator.pop(context, true); //登録完了フラグを前ページに渡す
+//削除完了フラグを前ページに渡す
     Navigator.pop(context, {
       'deleted': true,
       'address': widget.macAddress,

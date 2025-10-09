@@ -79,7 +79,7 @@ class DatabaseHelper {
           CREATE TABLE $tableDevice (
           $columnDeId INTEGER PRIMARY KEY AUTOINCREMENT,
             $columnDeviceAddress TEXT UNIQUE NOT NULL,
-            $columnName TEXT NULL
+            $columnName TEXT NULL,
             $columnDeleteFlag INTEGER NOT NULL DEFAULT 0
           )
           ''');

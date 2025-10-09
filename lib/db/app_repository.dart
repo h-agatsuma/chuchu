@@ -25,12 +25,13 @@ FROM (
       GROUP BY address
     )
   ) r ON d.address = r.address
+  WHERE d.deleteFlag = 0
 
   UNION ALL
 
   SELECT NULL as id, r.address, NULL as name, r.feed, r.battery, r.updateDate
   FROM receptionInfo r
-  WHERE r.address NOT IN (SELECT address FROM deviceInfo)
+  WHERE r.address NOT IN (SELECT address FROM deviceInfo WHERE deleteFlag = 0)
     AND r.updateDate > datetime('now', '-5 minutes')
     AND (address, updateDate) IN (
       SELECT address, MAX(updateDate)

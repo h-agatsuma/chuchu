@@ -2,10 +2,10 @@ import 'package:test3/db/database_helper1.dart';
 import 'package:sqflite/sqflite.dart';
 
 //デバイス情報
-class DeviceDao{
+class DeviceDao {
   final DatabaseHelper dbHelper;
-  DeviceDao(this.dbHelper);
 
+  DeviceDao(this.dbHelper);
 
   // 登録
   Future<int> upsertDevice(Map<String, dynamic> row) async {
@@ -29,11 +29,12 @@ class DeviceDao{
     );
   }
 
-  //　削除
+  //　削除（deviceInfoのデリートフラグ1に変更）
   Future<int> deleteDevice(String address) async {
     final db = await dbHelper.database;
-    return await db.delete(
+    return await db.update(
       DatabaseHelper.tableDevice,
+      {'deleteFlag': 1},
       where: 'address = ?',
       whereArgs: [address],
     );
@@ -43,5 +44,4 @@ class DeviceDao{
     final db = await dbHelper.database;
     return await db.query(DatabaseHelper.tableDevice);
   }
-
 }

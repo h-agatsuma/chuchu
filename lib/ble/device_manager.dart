@@ -181,12 +181,6 @@ class DeviceManager extends ChangeNotifier {
           debugPrint('oldFeed=$oldFeed, newFeed=$newFeed, uiFeed=$uiFeed');
           debugPrint('oldFeed=$oldBattery, newFeed=$newBattery, uiFeed=$uiBattery');
 
-          // if (feedMatch || batteryClose) {
-          //   // 両方：feed と battery を更新
-          //   _dbUIMap[address]?.feed=newDevice.feed;
-          //   _dbUIMap[address]?.battery=newDevice.battery;
-          //   notifyListeners();
-
             if (feedMatch || batteryClose) {
               final target = _dbUIMap[address];
               if (target != null) {

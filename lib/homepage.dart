@@ -39,7 +39,6 @@ class DataMapProvider with ChangeNotifier {
   Data? getByAddress(String address) => _dataMap[address];
 }
 
-
 class _MyHomePageState extends State<MyHomePage> {
   List<Data> _dbData = []; // 取得データを保持
   List<Data> _query = []; //ソート後のデータを保持
@@ -65,7 +64,6 @@ class _MyHomePageState extends State<MyHomePage> {
         statusConnect.isGranted &&
         statusLocation.isGranted) {
       debugPrint('必要な権限が許可されました');
-     // context.read<DeviceManager>().startScan();
     } else {
       print('必要な権限が許可されていません');
     }
@@ -110,7 +108,6 @@ class _MyHomePageState extends State<MyHomePage> {
         if (idx != -1) {
           setState(() {
             _dbData[idx].name = newName;
-            _dbData[idx].updateDate = DateTime.now();
             if (_sortedByName) {
               _query = _nameSort(List<Data>.from(_dbData));
             } else {
@@ -129,7 +126,7 @@ class _MyHomePageState extends State<MyHomePage> {
             final tmp = Data(
               address: address,
               name: newName,
-              updateDate: DateTime.now(),
+              updateDate: liveData.updateDate,
               feed: liveData.feed,
               battery: liveData.battery,
               manufacturerData: liveData.manufacturerData,
@@ -237,11 +234,11 @@ class _MyHomePageState extends State<MyHomePage> {
         final dbUI = _mergeDbAndLive(baseDbList, deviceManager.data);
 
         // Mapを作成（addressをキーにしたMap）
-        final Map<String, Data> dbUIMap = {
-          for (var d in dbUI) d.address: d
-        };
+        final Map<String, Data> dbUIMap = {for (var d in dbUI) d.address: d};
 
-        deviceManager.updateDbUI(dbUIMap); //UIの値と比較のため、dbUIMapをdeviceManagerでも使えるようにする
+        deviceManager.updateDbUI(
+          dbUIMap,
+        ); //UIの値と比較のため、dbUIMapをdeviceManagerでも使えるようにする
 
         return Scaffold(
           appBar: AppBar(
@@ -370,22 +367,24 @@ class _MyHomePageState extends State<MyHomePage> {
 
   //DBデータとBLEデータをマージ
   List<Data> _mergeDbAndLive(List<Data> dbData, List<Data> liveData) {
+    final dbAddresses = dbData.map((d) => d.address).toSet();
     final Map<String, Data> result = {
       for (var d in dbData) d.address: d, // DBのデータがベース
     };
-    for (var d in liveData) {
-      result[d.address] = d; // BLE受信データで上書き
+
+    final now = DateTime.now();
+    for (var ld in liveData) {
+      if (dbAddresses.contains(ld.address)) {
+        result[ld.address] = ld; // BLE受信データで上書き
+      } else {
+        // 未登録だが受信が5分以内なら表示
+        if (now.difference(ld.updateDate).inMinutes <= 5) {
+          result[ld.address] = ld;
+        }
+      }
     }
     return result.values.toList();
-    //..sort((a, b) => b.updateDate.compareTo(a.updateDate)); 更新日時でソートするとき
   }
-
-  // //バッテリーを 16 進数から％に計算
-  // int convertBatteryPercent(int raw) {
-  //   double percent = (raw - 800) / 4; //所定の計算式
-  //   int battery = percent.floor(); //少数切り捨て
-  //   return battery.clamp(0, 100); //範囲を 0 から 100 に
-  // }
 }
 
 Widget _buildRow(
