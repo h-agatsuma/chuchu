@@ -5,6 +5,7 @@ import 'package:test3/db/app_repository.dart';
 import 'package:test3/db/reception_dao.dart';
 import 'package:test3/models/data.dart';
 import 'package:test3/db/database_helper1.dart';
+import 'package:test3/homepage.dart';
 import 'bluetooth_service.dart';
 import 'dart:typed_data'; //Uint8List に必要
 import 'dart:math'; //min に必要
@@ -42,6 +43,12 @@ class DeviceManager extends ChangeNotifier {
 
   final Map<String, Data> _data = {}; // ← Map に変更
   StreamSubscription<Data>? _deviceSub; //データを流すストリームに対する購読
+
+  Map<String, Data> _dbUIMap = {}; // ← UIに表示されている値（Map）を一時的に保持しておく変数
+
+  void updateDbUI(Map<String, Data> newDbUIMap) {
+    _dbUIMap = newDbUIMap;
+  }
 
   bool _isScanning = false; //探索中かどうか
 
@@ -101,15 +108,8 @@ class DeviceManager extends ChangeNotifier {
         final address = device.address;
         final raw = device.manufacturerData; // List<int> or Uint8List
 
-        // //raw(manufacturerData) が null のとき、mData も null
-        // //そうでなければ、3 バイトを取り出して Uint8List に変換し mData に格納
-        // //min を使えば、raw.length >= 3 よりも簡単に書ける
-        // final Uint8List? mData = (raw == null)
-        //     ? null
-        //     : Uint8List.fromList(raw.sublist(0, min(raw.length, 3)));
-
         Data newDevice;
-        // スキャン受信ハンドラ内の if 部分
+        // スキャン受信ハンドラ内の if 部分 多分ここのif文いらない。Dataクラスで変換しているのでelseの部分だけで十分。
         if (raw != null && raw.length >= 3) {
           // 先頭3バイトだけ使う
           final List<int> mData = raw.sublist(0, 3);
@@ -119,9 +119,6 @@ class DeviceManager extends ChangeNotifier {
 
           // batteryRaw: 2バイト目（上位）と3バイト目（下位）を結合（ビッグエンディアン想定）
           final int battery = ((mData[1] & 0xFF) << 8) | (mData[2] & 0xFF);
-
-          // // 必要ならパーセントへ変換（なければ batteryRaw をそのまま使ってもOK）
-          // final int batteryPercent = computeBatteryPercent(batteryRaw);
 
           // Data の生成（Data クラスが次のようなコンストラクタを持つことを前提）
           newDevice = Data(
@@ -160,90 +157,46 @@ class DeviceManager extends ChangeNotifier {
         final DateTime now = DateTime.now();
         bool shouldNotifyUI = false;
 
-        // bool shouldShow;
-        // if (oldDevice == null) {
-        //   shouldShow = true;
-        // } else {
-        //   // nullable を想定して安全に比較
-        //   final bool feedEqual = (oldDevice.feed != null && newDevice.feed != null)
-        //       ? (oldDevice.feed == newDevice.feed)
-        //       : false;
-        //   final bool batteryEqual = (oldDevice.battery != null && newDevice.battery != null)
-        //       ? ((oldDevice.battery - newDevice.battery).abs() <= 8)
-        //       : false;
-        //
-        //   shouldShow = feedEqual || batteryEqual;
-        // }
-        // if (oldDevice == null) {
-        //   // 新規追加は常に表示
-        //   _data[address] = newDevice;
-        //   notifyListeners();
-        // } else {
-        //   // 既存オブジェクトを更新して差分検出（updateFrom は既にあるメソッド前提）
-        //   final changed = oldDevice.updateFrom(newDevice);
-        //   // 変化があり、かつ表示条件に合致する場合に UI 更新通知
-        //   if (changed && shouldShow) {
-        //     // oldDevice は updateFrom により書き換わっているので Map の値は既に更新済み
-        //     notifyListeners();
-        //     debugPrint('[DeviceManager] Data updated and shown: ${oldDevice.address}');
-        //   } else if (changed) {
-        //     // 変化はあったが表示条件に合致しない場合は通知しない（ログだけ）
-        //     debugPrint('[DeviceManager] Data changed but not shown (filter): ${oldDevice.address}');
-        //   }
-        // }
         if (oldDevice == null) {
           // 新規：常に追加して UI 表示
           _data[address] = newDevice;
           notifyListeners();
           shouldNotifyUI = true;
         } else {
-          // 既存あり: 条件判定
-          final bool feedMatch = (oldDevice.feed == newDevice.feed);
-          final bool batteryClose = (oldDevice.battery - newDevice.battery).abs() <= 8;
 
-          if (feedMatch && batteryClose) {
-            // 両方：feed と battery を更新
-            final changed = oldDevice.updateBoth(newDevice.feed, newDevice.battery, now);
-            if (changed) notifyListeners();
-          } else if (batteryClose) {
-            // battery のみ（UIは battery と updateDate を反映）
-            final changed = oldDevice.updateBatteryOnly(newDevice.battery, now);
-            if (changed) notifyListeners();
-          } else if (feedMatch) {
-            // feed のみ反映
-            final changed = oldDevice.updateFeedOnly(newDevice.feed, now);
-            if (changed) notifyListeners();
+          final oldFeed = oldDevice.feed;
+          final newFeed = newDevice.feed;
+          final uiFeed = _dbUIMap[address]?.feed;
+
+          final oldBattery = oldDevice.battery;
+          final newBattery = newDevice.battery;
+          final uiBattery = _dbUIMap[address]?.battery;
+
+
+          // // 既存あり: 条件判定 _dbUI:画面に表示されているデータ
+          final bool feedMatch = (oldFeed == newFeed)&&(uiFeed != newFeed);
+          final bool batteryClose = ((oldBattery - newBattery).abs() <= 8)&&(uiBattery!=newBattery);
+
+
+          debugPrint('oldFeed=$oldFeed, newFeed=$newFeed, uiFeed=$uiFeed');
+          debugPrint('oldFeed=$oldBattery, newFeed=$newBattery, uiFeed=$uiBattery');
+
+          // if (feedMatch || batteryClose) {
+          //   // 両方：feed と battery を更新
+          //   _dbUIMap[address]?.feed=newDevice.feed;
+          //   _dbUIMap[address]?.battery=newDevice.battery;
+          //   notifyListeners();
+
+            if (feedMatch || batteryClose) {
+              final target = _dbUIMap[address];
+              if (target != null) {
+                target.updateFrom(newDevice);
+              }
           } else {
             // どちらも満たさない: UI は更新しない（でも内部的に値を置き換えたい場合は別途扱う）
             debugPrint('[DeviceManager] Not showing update for $address (filter)');
           }
         }
-
-        // if (oldDevice == null) {
-        //   _data[address] = newDevice;
-        //   notifyListeners(); // Map 構造が変わった時だけ通知（追加時）
-        // } else {
-        //   final changed = oldDevice.updateFrom(newDevice);
-        //   if (changed) {debugPrint('[DeviceManager] Data updated: ${oldDevice.address}');}
-        //   //oldDevice.updateFrom(newDevice);
-        // }
-
-        // 差がないか8以内ならUI表示
-        // final bool shouldShow = true;
-        //   // 「差が無かったら確定」の条件再確認！！
-        // final bool shouldShow = oldDevice == null ||
-        //       (oldDevice.feed == newDevice.feed) ||
-        //       ((oldDevice.battery - newDevice.battery).abs() <= 8);
-        //
-        //   if (shouldShow) {
-        //     _data[address] = newDevice;
-        //     notifyListeners();
-        //     debugPrint('[DeviceManager] updated UI for ${newDevice.address}');
-        //   } else {
-        //     debugPrint('[DeviceManager] not updating UI for ${newDevice.address}');
-        //
-        //   }
-
         // DB保存用キューに入れる等
         _enqueueSave(newDevice);
       },
@@ -253,17 +206,6 @@ class DeviceManager extends ChangeNotifier {
     );
   }
 
-  // if (oldDevice == null ||
-  //     !listEqualsFeed(oldDevice.feed, data)) {
-  //   _data[address] = newDevice;
-  //   notifyListeners();
-  // }
-  //
-  // if (oldDevice == null ||
-  //     !listEqualsBattery(oldDevice.manufacturerData, data, 8)) {
-  //   _data[address] = newDevice;
-  //   notifyListeners();
-  // }
 
   //   //2 秒待って受信が止まったら、isReceiving=false にする
   //   Future.delayed(Duration(seconds: 2), () {
@@ -292,7 +234,7 @@ class DeviceManager extends ChangeNotifier {
     debugPrint(
       '[enqueue] address=${d.address} feed=${d.feed} bat=${d.battery}',
     );
-    // シンプル実装：キューに追加（重複を避けたいなら address で上書きするロジックに変える）
+    // キューに追加
     _saveQueue.add(map);
     debugPrint('[enqueue] queueSize=${_saveQueue.length}');
     // もしキューが非常に大きくなったら即フラッシュする閾値を設けてもよい
@@ -303,6 +245,7 @@ class DeviceManager extends ChangeNotifier {
 
   //溜まったデータをまとめてDBに保存
   Future<void> _flushSaveQueue() async {
+
     final dbHelper = DatabaseHelper.instance;
     final redao = ReceptionDao(dbHelper);
     if (_isFlushing) return;
@@ -316,8 +259,9 @@ class DeviceManager extends ChangeNotifier {
     _saveQueue.clear();
 
     try {
-      await redao.batchUpsertReceptions(items);
-      debugPrint('[flush] batchUpsertReceptions OK');
+      await redao.batchInsertReceptions(items);
+      debugPrint('[flush] batchInsertReceptions OK');
+      await loadAll(); // ←oldDevice更新
     } catch (e, st) {
       debugPrint('flushSaveQueue failed: $e\n$st');
       // 失敗したら再度キューに戻すかログ保存する方が良い
@@ -327,26 +271,6 @@ class DeviceManager extends ChangeNotifier {
     }
   }
 
-  // //2 つの List<int>が同じかどうか判断。完全一致の場合。餌比較
-  // bool listEqualsFeed(List<int> a, List<int> b) {
-  //   if (a.length != b.length) return false; //長さが違えば内容も違うので false
-  //   for (int i = 0; i < a.length; i++) {
-  //     if (a[i] != b[i]) return false; //内容が違えば false
-  //   }
-  //   return true; //内容が一緒なら true
-  // }
-  //
-  // //2 つの List<int>の差が 8 以内かどうか。バッテリーのとき比較
-  // bool listEqualsBattery(List<int> a, List<int> b, int battery) {
-  //   if (a.length != b.length) return false;
-  //
-  //   for (int i = 0; i < a.length; i++) {
-  //     if ((a[i] - b[i]).abs() > battery) {
-  //       return false;
-  //     }
-  //   }
-  //   return true;
-  // }
 
   @override
   void dispose() {

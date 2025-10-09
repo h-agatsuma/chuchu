@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 class BluetoothService {
   final FlutterReactiveBle _ble = FlutterReactiveBle(); //BLE接続のためのコントローラを作成
   StreamSubscription<DiscoveredDevice>? _scanSubscription; //スキャン購読を管理する変数の宣言
-  final StreamController<Data> _deviceController = //BleDevice型のデータを流すストリームを作る
+  final StreamController<Data> _deviceController = //Data型のデータを流すストリームを作る
       StreamController.broadcast(); //複数の購読者から同時に購読できるストリームを作る
 
   Stream<Data> get deviceStream =>
@@ -55,7 +55,7 @@ class BluetoothService {
       DateTime updateDate;
       if (updateDateStr.isNotEmpty) {
         // initial_data は DateFormat('yyyy/MM/dd HH:mm:ss') を使っている前提
-        updateDate = DateFormat('yyyy/MM/dd HH:mm:ss').parse(updateDateStr);
+        updateDate = DateFormat('yyyy-MM-dd HH:mm:ss').parse(updateDateStr);
       } else {
         updateDate = DateTime.now();
       }

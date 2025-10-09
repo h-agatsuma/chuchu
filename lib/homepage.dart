@@ -23,6 +23,23 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
+class DataMapProvider with ChangeNotifier {
+  final Map<String, Data> _dataMap = {};
+
+  Map<String, Data> get dataMap => _dataMap;
+
+  void updateFromList(List<Data> list) {
+    _dataMap.clear();
+    for (final d in list) {
+      _dataMap[d.address] = d;
+    }
+    notifyListeners();
+  }
+
+  Data? getByAddress(String address) => _dataMap[address];
+}
+
+
 class _MyHomePageState extends State<MyHomePage> {
   List<Data> _dbData = []; // 取得データを保持
   List<Data> _query = []; //ソート後のデータを保持
@@ -59,7 +76,7 @@ class _MyHomePageState extends State<MyHomePage> {
     await DatabaseHelper.instance.database; // ここで DB が無ければ作られる
     debugPrint('DB 初期化完了');
 
-    final rows = await repo.getAllData(); //照会メソッドを呼び出し、データを格納
+    final rows = await repo.getAllData(); //照会メソッドを呼び出す
 
     //マウントされていない＝ウィジェットが画面上にないときはreturn。setStateを呼ばない。
     if (!mounted) return;
@@ -217,7 +234,14 @@ class _MyHomePageState extends State<MyHomePage> {
         final baseDbList = _sortedByName
             ? _nameSort(List<Data>.from(_dbData))
             : List<Data>.from(_dbData);
-        final merged = _mergeDbAndLive(baseDbList, deviceManager.data);
+        final dbUI = _mergeDbAndLive(baseDbList, deviceManager.data);
+
+        // Mapを作成（addressをキーにしたMap）
+        final Map<String, Data> dbUIMap = {
+          for (var d in dbUI) d.address: d
+        };
+
+        deviceManager.updateDbUI(dbUIMap); //UIの値と比較のため、dbUIMapをdeviceManagerでも使えるようにする
 
         return Scaffold(
           appBar: AppBar(
@@ -287,10 +311,10 @@ class _MyHomePageState extends State<MyHomePage> {
               // データ行
               Expanded(
                 child: ListView.separated(
-                  itemCount: merged.length,
+                  itemCount: dbUI.length,
                   separatorBuilder: (context, index) => Divider(),
                   itemBuilder: (context, index) {
-                    final row = merged[index];
+                    final row = dbUI[index];
                     final isLive = deviceManager.contains(row.address);
 
                     if (isLive) {
@@ -402,7 +426,7 @@ Widget _buildRow(
             ),
             SizedBox(
               width: 80,
-              child: Center(child: Text(data.feed == 0 ? 'NO LEFT' : 'LEFT')),
+              child: Center(child: Text(data.feed == 0 ? 'LEFT' : 'NO LEFT')),
             ),
             SizedBox(width: 70, child: Center(child: Text('$batteryPercent%'))),
             SizedBox(width: 80, child: Center(child: Text(displayString))),

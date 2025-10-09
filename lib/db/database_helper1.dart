@@ -19,11 +19,14 @@ class DatabaseHelper {
 
   //デバイス情報テーブル
   static final tableDevice = 'deviceInfo'; // テーブル名:deviceInfo
+  static final columnDeId ='id';
   static final columnDeviceAddress = 'address'; // カラム名：address
   static final columnName = 'name'; // カラム名:name
+  static final columnDeleteFlag = 'deleteFlag';
 
   //受信情報テーブル
   static final tableReception = 'receptionInfo'; // テーブル名:receptionInfo
+  static final columnReId ='id';
   static final columnReceptionAddress = 'address'; // カラム名：address
   static final columnFeed = 'feed'; // カラム名：feed
   static final columnDate = 'updateDate'; // カラム名：updateDate
@@ -64,7 +67,8 @@ class DatabaseHelper {
   Future _onCreate(Database db, int version) async {
     await db.execute('''
           CREATE TABLE $tableReception (
-            $columnReceptionAddress TEXT PRIMARY KEY,
+            $columnReId INTEGER PRIMARY KEY AUTOINCREMENT,
+            $columnReceptionAddress TEXT NOT NULL,
             $columnFeed INTEGER DEFAULT 0,
             $columnDate TEXT NOT NULL DEFAULT '',
             $columnBattery INTEGER DEFAULT 0
@@ -73,8 +77,10 @@ class DatabaseHelper {
 
     await db.execute('''
           CREATE TABLE $tableDevice (
-            $columnDeviceAddress TEXT PRIMARY KEY,
+          $columnDeId INTEGER PRIMARY KEY AUTOINCREMENT,
+            $columnDeviceAddress TEXT UNIQUE NOT NULL,
             $columnName TEXT NULL
+            $columnDeleteFlag INTEGER NOT NULL DEFAULT 0
           )
           ''');
 
@@ -86,7 +92,7 @@ class DatabaseHelper {
     for (final row in initialReceptionData) {
       batch.insert(tableReception, {
         ...row,
-        'updateDate': DateFormat('yyyy/MM/dd HH:mm:ss').format(DateTime.now())});
+        'updateDate': DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())});
     }
     await batch.commit(noResult: true);
   }

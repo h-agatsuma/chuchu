@@ -43,7 +43,7 @@ class ReceptionDao{
   }
 
   //受信した情報バッチメソッド
-  Future<void> batchUpsertReceptions(List<Map<String, dynamic>> rows) async {
+  Future<void> batchInsertReceptions(List<Map<String, dynamic>> rows) async {
     print('[ReceptionDao] batchUpsertReceptions called rows=${rows.length}');
     if (rows.isEmpty) return;
     final db = await dbHelper.database;
@@ -67,7 +67,7 @@ class ReceptionDao{
         final batch = txn.batch();
         for (final row in rows) {
           print('[ReceptionDao] adding row keys=${row.keys} address=${row['address']} feed=${row['feed']} battery=${row['battery']} updateDate=${row['updateDate'].runtimeType}:${row['updateDate']}');
-          batch.insert(DatabaseHelper.tableReception, row, conflictAlgorithm: ConflictAlgorithm.replace);
+          batch.insert(DatabaseHelper.tableReception, row);
         }
         print('[ReceptionDao] committing batch');
         await batch.commit(noResult: true);

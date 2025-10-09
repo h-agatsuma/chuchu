@@ -8,7 +8,7 @@ class DeviceDao{
 
 
   // 登録
-  Future<int> insertDevice(Map<String, dynamic> row) async {
+  Future<int> upsertDevice(Map<String, dynamic> row) async {
     final db = await dbHelper.database;
     return await db.insert(
       DatabaseHelper.tableDevice,

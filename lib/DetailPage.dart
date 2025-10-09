@@ -3,6 +3,13 @@ import 'package:intl/intl.dart'; //時刻で使った
 import 'db/database_helper1.dart';
 import 'db/device_dao.dart';
 import 'db/reception_dao.dart';
+import 'package:form_field_validator/form_field_validator.dart';
+
+// final nameValidator = MultiValidator([
+//   MaxLengthValidator(30,errorText: "30文字以下で入力してください")
+// ]);
+
+
 
 class DetailPage extends StatefulWidget {
   final String macAddress;
@@ -19,6 +26,7 @@ class _DetailPageState extends State<DetailPage> {
   late final deviceDao = DeviceDao(dbHelper);
   late final receptionDao = ReceptionDao(dbHelper);
   late TextEditingController nameController;
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -52,7 +60,7 @@ class _DetailPageState extends State<DetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start, // 左揃え
               children: [
                 // --- MAC Address ---
-                const Text("macAddress:", style: TextStyle(fontSize: 20)),
+                const Text("MAC Address:", style: TextStyle(fontSize: 20)),
                 Padding(
                   padding: const EdgeInsets.only(left: 20, top: 4, bottom: 100),
                   // ← 値だけインデント
@@ -60,17 +68,27 @@ class _DetailPageState extends State<DetailPage> {
                 ),
 
                 // --- Name ---
-                const Text("name:", style: TextStyle(fontSize: 20)),
+                const Text("Device Name:", style: TextStyle(fontSize: 20)),
+
                 Padding(
                   padding: const EdgeInsets.only(left: 20, top: 4, bottom: 100),
-                  child: TextField(
+                  child:Form(
+                    autovalidateMode: AutovalidateMode.always,
+                    key: _formKey,
+                  child: TextFormField(
                     controller: nameController,
+                    //maxLength: 30,
                     style: const TextStyle(fontSize: 30),
                     decoration: const InputDecoration(
                       border: UnderlineInputBorder(), // 枠線を付ける
                     ),
+                    validator: (value) {
+                      if (value!=null&&value.length > 31) return '31字以下で入力してください。';
+                      if (value!=null&&!RegExp(r'^[a-zA-Z0-9]*$').hasMatch(value)) return '半角英数字で入力してください。';
+                      return null;
+                    },
                   ),
-                ),
+                ),),
                 Padding(
                   padding: const EdgeInsets.only(left: 20, top: 4),
                   child: Row(
@@ -122,19 +140,19 @@ class _DetailPageState extends State<DetailPage> {
   // subscribe ボタンクリック
   void _insOrReplace() async {
     DateTime now = DateTime.now(); //現在の時刻を DateTime 型で取得
-    String datetime = DateFormat('yyyy/MM/dd HH:mm:ss').format(now);
+    //String datetime = DateFormat('yyyy/MM/dd HH:mm:ss').format(now);
     final nameText = nameController.text; //テキストフィールドに入力された名前を取得
 
     Map<String, dynamic> rowdev = {DatabaseHelper.columnDeviceAddress: widget.macAddress, DatabaseHelper.columnName: nameText};
 
-    Map<String, dynamic> rowrec = {
-      DatabaseHelper.columnReceptionAddress: widget.macAddress,
-      DatabaseHelper.columnFeed: 0, //テストデータ
-      DatabaseHelper.columnDate: datetime,
-      DatabaseHelper.columnBattery: 330, //テストデータ
-    };
-    await deviceDao.insertDevice(rowdev);
-    await receptionDao.insertReception(rowrec);
+    // Map<String, dynamic> rowrec = {
+    //   DatabaseHelper.columnReceptionAddress: widget.macAddress,
+    //   DatabaseHelper.columnFeed: 0, //テストデータ
+    //   DatabaseHelper.columnDate: datetime,
+    //   DatabaseHelper.columnBattery: 330, //テストデータ
+    // };
+    await deviceDao.upsertDevice(rowdev);
+    //await receptionDao.insertReception(rowrec);
     print('テストデータを登録しました');
 
     // Navigator.pop(context, true); //登録完了フラグを前ページに渡す
@@ -149,7 +167,6 @@ class _DetailPageState extends State<DetailPage> {
   // unsubscribe ボタンクリック
   void _delete() async {
     await deviceDao.deleteDevice(widget.macAddress);
-    await receptionDao.deleteReception(widget.macAddress);
     print('${widget.macAddress} を削除しました。');
     // Navigator.pop(context, true); //登録完了フラグを前ページに渡す
     Navigator.pop(context, {

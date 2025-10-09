@@ -5,12 +5,13 @@ import 'package:flutter/foundation.dart'; //changeNotifierのために使用
 class Data extends ChangeNotifier{
   final String address;
   String? name;
+  final int? id;         // deviceInfoのid（null許容）
   DateTime updateDate;
   int feed;
   int battery;
   Uint8List? manufacturerData;
 
-  Data({required this.address, this.name, required this.updateDate, required this.feed, required this.battery, this.manufacturerData});
+  Data({required this.address, this.name, this.id,required this.updateDate, required this.feed, required this.battery, this.manufacturerData});
 
   bool updateFrom(Data newData) {
     //print('>>> updateFrom called for ${newData.address}');
@@ -62,7 +63,7 @@ class Data extends ChangeNotifier{
 
 
   //「Map（DB の行や JSON など）から Data のインスタンスを作る」ためのコンストラクタ。読み込み用
-  factory Data.fromMap(Map<String, dynamic> m) => Data(address: m['address'] as String, name: m['name'] as String, updateDate: DateFormat('yyyy/MM/dd HH:mm:ss').parse(m['updateDate'] as String), feed: m['feed'] as int, battery:m['battery'] as int);
+  factory Data.fromMap(Map<String, dynamic> m) => Data(address: m['address'] as String, name: m['name'] as String? ?? '', id: m['id'] as int?,  updateDate: DateFormat('yyyy-MM-dd HH:mm:ss').parse(m['updateDate'] as String), feed: m['feed'] as int? ?? 0, battery:m['battery'] as int);
 
   //Data のインスタンスを Map に変換する⇒DB への挿入、JSON 化に使う。保存・送信用
   Map<String, dynamic> toMap() => {'address': address, 'name': name, 'updateDate': updateDate.toIso8601String(), 'feed': feed, 'battery': battery};
@@ -72,7 +73,7 @@ class Data extends ChangeNotifier{
     'address': address,
     'feed': feed,
     'battery': battery,
-    'updateDate': DateFormat('yyyy/MM/dd HH:mm:ss').format(updateDate),
+    'updateDate': DateFormat('yyyy-MM-dd HH:mm:ss').format(updateDate),
   };
 
 
