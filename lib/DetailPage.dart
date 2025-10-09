@@ -88,7 +88,14 @@ class _DetailPageState extends State<DetailPage> {
                   child: Row(
                     children: [
                       ElevatedButton(
-                        onPressed: _insOrReplace, //インサート・更新メソッド
+                        onPressed: () {
+                          if (_formKey.currentState!.validate()) {
+                            //バリデーション成功時のみインサート・更新メソッド
+                            _insOrReplace();
+                          } else {
+                            debugPrint('入力エラー');
+                          }
+                        },
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size(150, 80),
                           backgroundColor: const Color(0xFF32CD32),
