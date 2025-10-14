@@ -10,26 +10,12 @@ import 'bluetooth_service.dart';
 import 'dart:typed_data'; //Uint8List に必要
 import 'dart:math'; //min に必要
 
-class Device {
-  final String id;
-  final List<int> manufacturerData;
-  bool isReceiving; //データ受信中かどうか。（アイコン用）デフォルトは false
-
-  Device({
-    required this.id,
-    required this.manufacturerData,
-    this.isReceiving = false,
-  });
-}
 
 //生データを渡す
 class DeviceManager extends ChangeNotifier {
-  //BluetoothService クラスのインスタンス生成
-  //final BluetoothService _bluetoothService = BluetoothService();
 
   // 指定のアドレスを持つデータがあるかどうかを返す
   bool contains(String address) {
-    //return dataList.any((d) => d.address == address);
     return _data.containsKey(address);
   }
 
@@ -46,6 +32,7 @@ class DeviceManager extends ChangeNotifier {
 
   Map<String, Data> _dbUIMap = {}; // ← UIに表示されている値（Map）を一時的に保持しておく変数
 
+  //homepageのdbUIMapの値を使えるようにする。
   void updateDbUI(Map<String, Data> newDbUIMap) {
     _dbUIMap = newDbUIMap;
   }
@@ -153,17 +140,12 @@ class DeviceManager extends ChangeNotifier {
             (newDevice.name == null || newDevice.name!.isEmpty)) {
           newDevice.name = oldDevice.name;
         }
-        // 判定条件
-        final DateTime now = DateTime.now();
-        bool shouldNotifyUI = false;
 
         if (oldDevice == null) {
           // 新規：常に追加して UI 表示
           _data[address] = newDevice;
           notifyListeners();
-          shouldNotifyUI = true;
         } else {
-
           final oldFeed = oldDevice.feed;
           final newFeed = newDevice.feed;
           final uiFeed = _dbUIMap[address]?.feed;
@@ -172,14 +154,13 @@ class DeviceManager extends ChangeNotifier {
           final newBattery = newDevice.battery;
           final uiBattery = _dbUIMap[address]?.battery;
 
-
-          // // 既存あり: 条件判定 _dbUI:画面に表示されているデータ
+          // // 既存あり: 条件判定 _dbUIMap:画面に表示されているデータ
           final bool feedMatch = (oldFeed == newFeed)&&(uiFeed != newFeed);
           final bool batteryClose = ((oldBattery - newBattery).abs() <= 8)&&(uiBattery!=newBattery);
 
 
           debugPrint('oldFeed=$oldFeed, newFeed=$newFeed, uiFeed=$uiFeed');
-          debugPrint('oldFeed=$oldBattery, newFeed=$newBattery, uiFeed=$uiBattery');
+          debugPrint('oldBattery=$oldBattery, newBattery=$newBattery, uiBattery=$uiBattery');
 
             if (feedMatch || batteryClose) {
               final target = _dbUIMap[address];
@@ -201,16 +182,6 @@ class DeviceManager extends ChangeNotifier {
   }
 
 
-  //   //2 秒待って受信が止まったら、isReceiving=false にする
-  //   Future.delayed(Duration(seconds: 2), () {
-  //     //2 秒後に処理実施
-  //     final updatedDevice = _data[address];
-  //     if (updatedDevice != null) {
-  //       // updatedDevice.isReceiving = false;
-  //       notifyListeners();
-  //     }
-  //   });
-  // });
   void stopScan() {
     _bluetoothService.stopScan();
     _deviceSub?.cancel();
@@ -218,6 +189,11 @@ class DeviceManager extends ChangeNotifier {
     _isScanning = false;
     _flushTimer?.cancel();
     _flushTimer = null;
+
+    //スキャン停止時は全デバイスの受信を強制停止
+    for (final d in _data.values) {
+      d.forceStopReceiving();
+    }
     notifyListeners();
   }
 

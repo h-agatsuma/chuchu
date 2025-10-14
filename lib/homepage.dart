@@ -25,7 +25,6 @@ class MyHomePage extends StatefulWidget {
 
 class DataMapProvider with ChangeNotifier {
   final Map<String, Data> _dataMap = {};
-
   Map<String, Data> get dataMap => _dataMap;
 
   void updateFromList(List<Data> list) {
@@ -235,7 +234,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
         // Mapを作成（addressをキーにしたMap）
         final Map<String, Data> dbUIMap = {for (var d in dbUI) d.address: d};
-
+        //UIに表示しているデータをdeviceManagerでも使えるようにする
         deviceManager.updateDbUI(
           dbUIMap,
         ); //UIの値と比較のため、dbUIMapをdeviceManagerでも使えるようにする
@@ -413,7 +412,7 @@ Widget _buildRow(
               width: 50,
               child: Icon(
                 Icons.bolt,
-                color: isLive ? Colors.black : Colors.transparent,
+                color: (isLive && data.isReceiving) ? Colors.black : Colors.transparent, //データ未受信の際はアイコン透明に。
               ),
             ),
             SizedBox(

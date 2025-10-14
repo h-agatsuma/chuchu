@@ -27,9 +27,9 @@ class _DetailPageState extends State<DetailPage> {
     super.initState();
     //テキストフィールドの初期表示
     nameController = TextEditingController(
-        text: (widget.name != null && widget.name!.isNotEmpty)
-            ? widget.name!
-            : ""
+      text: (widget.name != null && widget.name!.isNotEmpty)
+          ? widget.name!
+          : "",
     );
   }
 
@@ -43,7 +43,10 @@ class _DetailPageState extends State<DetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ChuChuCheckApp', style: TextStyle(color: Colors.white, fontSize: 32)),
+        title: const Text(
+          'ChuChuCheckApp',
+          style: TextStyle(color: Colors.white, fontSize: 32),
+        ),
         backgroundColor: Colors.green,
       ),
       body: Column(
@@ -58,7 +61,10 @@ class _DetailPageState extends State<DetailPage> {
                 Padding(
                   padding: const EdgeInsets.only(left: 20, top: 4, bottom: 100),
                   // ← 値だけインデント
-                  child: Text(widget.macAddress, style: const TextStyle(fontSize: 24)),
+                  child: Text(
+                    widget.macAddress,
+                    style: const TextStyle(fontSize: 24),
+                  ),
                 ),
 
                 // --- Name ---
@@ -66,23 +72,26 @@ class _DetailPageState extends State<DetailPage> {
 
                 Padding(
                   padding: const EdgeInsets.only(left: 20, top: 4, bottom: 100),
-                  child:Form(
+                  child: Form(
                     autovalidateMode: AutovalidateMode.always,
                     key: _formKey,
-                  child: TextFormField(
-                    controller: nameController,
-                    //maxLength: 30,
-                    style: const TextStyle(fontSize: 30),
-                    decoration: const InputDecoration(
-                      border: UnderlineInputBorder(), // 枠線を付ける
+                    child: TextFormField(
+                      controller: nameController,
+                      style: const TextStyle(fontSize: 30),
+                      decoration: const InputDecoration(
+                        border: UnderlineInputBorder(), // 枠線を付ける
+                      ),
+                      validator: (value) {
+                        if (value != null && value.length > 30)
+                          return '30字以下で入力してください。';
+                        if (value != null &&
+                            !RegExp(r'^[a-zA-Z0-9]*$').hasMatch(value))
+                          return '半角英数字で入力してください。';
+                        return null;
+                      },
                     ),
-                    validator: (value) {
-                      if (value!=null&&value.length > 31) return '31字以下で入力してください。';
-                      if (value!=null&&!RegExp(r'^[a-zA-Z0-9]*$').hasMatch(value)) return '半角英数字で入力してください。';
-                      return null;
-                    },
                   ),
-                ),),
+                ),
                 Padding(
                   padding: const EdgeInsets.only(left: 20, top: 4),
                   child: Row(
@@ -100,7 +109,9 @@ class _DetailPageState extends State<DetailPage> {
                           minimumSize: const Size(150, 80),
                           backgroundColor: const Color(0xFF32CD32),
                           foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(0),
+                          ),
                         ),
                         child: const Text('Subscribe'),
                       ),
@@ -111,7 +122,9 @@ class _DetailPageState extends State<DetailPage> {
                           minimumSize: const Size(150, 80),
                           backgroundColor: const Color(0xFF999966),
                           foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(0),
+                          ),
                         ),
                         child: const Text('Unsubscribe'),
                       ),
@@ -130,7 +143,10 @@ class _DetailPageState extends State<DetailPage> {
           mainAxisAlignment: MainAxisAlignment.end, // 中央寄せ
           children: const [
             SizedBox(width: 8), // アイコンと文字の間隔
-            Text("Powered by Signpost Co., Ltd.", style: TextStyle(fontSize: 14)),
+            Text(
+              "Powered by Signpost Co., Ltd.",
+              style: TextStyle(fontSize: 14),
+            ),
             Icon(Icons.image, size: 20),
           ],
         ),
@@ -141,25 +157,25 @@ class _DetailPageState extends State<DetailPage> {
   // subscribe ボタンクリック
   void _insOrReplace() async {
     final nameText = nameController.text; //テキストフィールドに入力された名前を取得
-    Map<String, dynamic> rowdev = {DatabaseHelper.columnDeviceAddress: widget.macAddress, DatabaseHelper.columnName: nameText};
+    Map<String, dynamic> rowdev = {
+      DatabaseHelper.columnDeviceAddress: widget.macAddress,
+      DatabaseHelper.columnName: nameText,
+    };
     await deviceDao.upsertDevice(rowdev);
 
-//登録完了フラグを前ページに渡す
+    //登録完了フラグを前ページに渡す
     Navigator.pop(context, {
       'updated': true,
       'address': widget.macAddress,
       'name': nameText,
     });
-
   }
 
   // unsubscribe ボタンクリック
   void _delete() async {
     await deviceDao.deleteDevice(widget.macAddress);
     print('${widget.macAddress} を削除しました。');
-//削除完了フラグを前ページに渡す
-    Navigator.pop(context, {
-      'deleted': true,
-      'address': widget.macAddress,
-    });}
+    //削除完了フラグを前ページに渡す
+    Navigator.pop(context, {'deleted': true, 'address': widget.macAddress});
+  }
 }

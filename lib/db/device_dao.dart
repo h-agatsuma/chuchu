@@ -7,14 +7,37 @@ class DeviceDao {
 
   DeviceDao(this.dbHelper);
 
-  // 登録
   Future<int> upsertDevice(Map<String, dynamic> row) async {
     final db = await dbHelper.database;
-    return await db.insert(
-      DatabaseHelper.tableDevice,
-      row,
-      conflictAlgorithm: ConflictAlgorithm.replace, //同じアドレスがあれば更新処理
-    );
+    return await db.transaction((txn) async {
+      final address = row['address'];
+
+      // UPDATE する際は id を更新しないようにコピーを作る
+      final updateRow = Map<String, dynamic>.from(row);
+      updateRow.remove('id');
+
+      final updatedCount = await txn.update(
+        DatabaseHelper.tableDevice,
+        updateRow,
+        where: 'address = ?',
+        whereArgs: [address],
+      );
+
+      if (updatedCount > 0) {
+        // 更新済みならその行の id を返す
+        final q = await txn.query(
+          DatabaseHelper.tableDevice,
+          columns: ['id'],
+          where: 'address = ?',
+          whereArgs: [address],
+          limit: 1,
+        );
+        return q.first['id'] as int;
+      } else {
+        // 存在しなければ挿入（この時点で id が発番される）
+        return await txn.insert(DatabaseHelper.tableDevice, row);
+      }
+    });
   }
 
   //　更新
