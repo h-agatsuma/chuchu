@@ -235,9 +235,11 @@ class _MyHomePageState extends State<MyHomePage> {
         // Mapを作成（addressをキーにしたMap）
         final Map<String, Data> dbUIMap = {for (var d in dbUI) d.address: d};
         //UIに表示しているデータをdeviceManagerでも使えるようにする
-        deviceManager.updateDbUI(
-          dbUIMap,
-        ); //UIの値と比較のため、dbUIMapをdeviceManagerでも使えるようにする
+       deviceManager.updateDbUI(dbUIMap);
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          deviceManager.updateDbUI(dbUIMap);
+        });
 
         return Scaffold(
           appBar: AppBar(
@@ -312,10 +314,10 @@ class _MyHomePageState extends State<MyHomePage> {
                   itemBuilder: (context, index) {
                     final row = dbUI[index];
                     final isLive = deviceManager.contains(row.address);
-
                     if (isLive) {
                       final live = deviceManager.getData(row.address)!;
                       return ChangeNotifierProvider.value(
+                        key: ValueKey(live.address),
                         value: live,
                         child: Consumer<Data>(
                           builder: (context, d, _) {
@@ -441,7 +443,9 @@ class DataRowWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     final data = context.watch<Data>();
+    debugPrint('Widget build: listening data=${data.hashCode}');
 
     return _buildRow(context, data, true);
   }

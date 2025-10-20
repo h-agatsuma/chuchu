@@ -11,6 +11,7 @@ class Data extends ChangeNotifier {
   int feed;
   int battery;
   Uint8List? manufacturerData;
+  int seq = 0; //付け足した
 
   Timer? _staleTimer;
 
@@ -22,13 +23,14 @@ class Data extends ChangeNotifier {
     required this.feed,
     required this.battery,
     this.manufacturerData,
+    this.seq = 0,//付け足した
   });
 
   bool _forceStale = false; // true のとき強制的に未受信扱いにする
   // 現在が「受信から3秒以内」かどうかを返すプロパティ 今は受信スピードに合わせて12秒
   bool get isReceiving =>
       !_forceStale && //_forceStaleがfalse=受信中で、更新日時が12秒以内ならisReceiving=true(アイコン表示判定)
-      DateTime.now().difference(updateDate).inSeconds <= 12;
+      DateTime.now().difference(updateDate).inSeconds <= 20;
 
   // 受信を強制停止（STOP SCANNING 時に呼ぶ）
   void forceStopReceiving() {
@@ -38,8 +40,6 @@ class Data extends ChangeNotifier {
   }
 
   bool updateFrom(Data newData) {
-    //print('>>> updateFrom called for ${newData.address}');
-
     bool changed = false;
     if (name != newData.name) {
       name = newData.name;
@@ -54,25 +54,96 @@ class Data extends ChangeNotifier {
       battery = newData.battery;
       changed = true;
     }
+
+    // seq を更新（受信順を取り込む）付け足した
+    if (newData.seq != 0 && newData.seq != seq) {
+      seq = newData.seq;
+      changed = true;
+    }
+
+    // 日時まわりは共通メソッドで処理
+    final dateOrIcon = _applyUpdateDate(newData.updateDate);
+
+    // _applyUpdateDate は _forceStale 解除やタイマー再スケジューリングを行うため
+    // ここで常に呼ばれることが重要（通知は notify フラグで制御）
+    // final shouldNotify = (changed || dateOrIcon);
+    //if (shouldNotify) notifyListeners();
+
+    // if (changed || dateOrIcon) {
+    //   notifyListeners();
+    // }
+    //return changed || dateOrIcon;
+
+
     if (updateDate != newData.updateDate) {
       updateDate = newData.updateDate;
       changed = true;
     }
-
     // 新しい受信が来たので「強制停止」を解除
     _forceStale = false;
-    // 既存タイマーを破棄して再スケジュール（3秒後に再 notify する）
+
+    // // 既存タイマーを破棄して再スケジュール（3秒後に再 notify する）※今はテスト用に12秒
+    // _staleTimer?.cancel();
+    // final untilStale = updateDate
+    //     .add(const Duration(seconds: 12))
+    //     .difference(DateTime.now());
+    // final duration = untilStale.isNegative ? Duration.zero : untilStale;
+    // _staleTimer = Timer(duration, () {
+    //   // 3秒経過時に UI 更新（アイコン非表示などを反映）
+    //  // notifyListeners();
+    // });
+    //if (changed) notifyListeners(); // 行単位での通知
+    return changed || dateOrIcon;
+  }
+
+  // 日時だけ更新したいときに呼ぶ
+  bool updateDateOnly(DateTime newUpdateDate,{int? newSeq}) {
+    // newSeq が渡されていて、現在の seq より古ければ無視する
+    if (newSeq != null && seq != 0 && newSeq <= seq) {
+      debugPrint('[Data] Ignoring out-of-order date update: newSeq=$newSeq <= current seq=$seq');
+      return false;
+    }
+
+    // 新しい seq を採用（ある場合）
+    var seqChanged = false;
+    if (newSeq != null && newSeq != seq) {
+      seq = newSeq;
+      seqChanged = true;
+    }
+
+    final dateOrIcon = _applyUpdateDate(newUpdateDate);
+
+    // ここで「状態が変わったか」を判定する（通知フラグとは独立）
+    final changed = dateOrIcon || seqChanged;
+
+   // final shouldNotify = dateOrIcon || seqChanged;
+    // final shouldNotify = (dateOrIcon || seqChanged) && notify;
+    // if (changed && notify) {
+    //   notifyListeners();
+    // }
+    return changed;
+  }
+
+  // 共通処理: updateDate を適用、_forceStale を解除、タイマー再スケジュール
+  // 戻り値は「UI 更新が必要かどうか（日時が変わった or _forceStale が真だった）」を返す
+
+  bool _applyUpdateDate(DateTime newDate){
+    final wasForceStale = _forceStale;
+    final dateChanged = updateDate != newDate;
+
+    updateDate = newDate;
+    _forceStale = false;
+
     _staleTimer?.cancel();
-    final untilStale = updateDate
-        .add(const Duration(seconds: 12))
-        .difference(DateTime.now());
+    final untilStale = updateDate.add(Duration(seconds: 20)).difference(DateTime.now());
     final duration = untilStale.isNegative ? Duration.zero : untilStale;
     _staleTimer = Timer(duration, () {
-      // 3秒経過時に UI 更新（アイコン非表示などを反映）
-      notifyListeners();
+      // スタレ扱いになったら UI に反映
+      //notifyListeners();
     });
-    if (changed) notifyListeners(); // 行単位での通知
-    return changed;
+
+    // 日時が変わったか、以前 _forceStale だった場合は UI 更新したい
+    return dateChanged || wasForceStale;
   }
 
   @override
@@ -152,7 +223,7 @@ class Data extends ChangeNotifier {
     'updateDate': DateFormat('yyyy-MM-dd HH:mm:ss').format(updateDate),
   };
 
-  // factory を追加
+  // factory を追加（受信バイト列から feed/battery を算出する実装は適宜置き換えてください）
   factory Data.fromBluetooth({
     required String address,
     required String name,
