@@ -12,6 +12,7 @@ class Data extends ChangeNotifier {
   int battery;
   Uint8List? manufacturerData;
   //int seq = 0; //付け足した
+  bool _forceStale = false;
 
   Timer? _staleTimer;
 
@@ -28,22 +29,26 @@ class Data extends ChangeNotifier {
 
   // bool _forceStale = false; // true のとき強制的に未受信扱いにする
   // // 現在が「受信から3秒以内」かどうかを返すプロパティ 今は受信スピードに合わせて12秒
-  // bool get isReceiving =>
-  //     !_forceStale && //_forceStaleがfalse=受信中で、更新日時が12秒以内ならisReceiving=true(アイコン表示判定)
-  //     DateTime.now().difference(updateDate).inSeconds <= 20;
-  //
-  // // 受信を強制停止（STOP SCANNING 時に呼ぶ）
-  // void forceStopReceiving() {
-  //   _forceStale = true; //未受信扱い
-  //   _staleTimer?.cancel(); // タイマーがあればキャンセル
-  //   notifyListeners();
-  // }
+  bool get isReceiving =>
+      !_forceStale && //_forceStaleがfalse=受信中で、更新日時が12秒以内ならisReceiving=true(アイコン表示判定)
+      DateTime.now().difference(updateDate).inSeconds <= 20;
 
-  bool updateFrom(Data newData) {
+  // 受信を強制停止（STOP SCANNING 時に呼ぶ）
+  void forceStopReceiving() {
+    _forceStale = true; //未受信扱い
+    _staleTimer?.cancel(); // タイマーがあればキャンセル
+    //notifyListeners();
+  }
+
+  void resumeReceiving() {
+    _forceStale = false;
+  }
+
+  bool updateFrom(Data newData,{bool updateBattery = true}) {
     bool changed = false;
     if (name != newData.name) { name = newData.name; changed = true; }
     if (feed != newData.feed) { feed = newData.feed; changed = true; }
-    if (battery != newData.battery) {debugPrint('[Data] Battery changed: ${battery} → ${newData.battery}');
+    if (updateBattery && battery != newData.battery) {debugPrint('[Data] Battery changed: ${battery} → ${newData.battery}');
     battery = newData.battery; changed = true; }
     if (updateDate != newData.updateDate) { updateDate = newData.updateDate; changed = true; }
     if (changed) notifyListeners(); // 行単位での通知
