@@ -12,11 +12,6 @@ import 'dart:math'; //min に必要
 
 //生データを渡す
 class DeviceManager extends ChangeNotifier {
-  // int _seqCounter = 0;
-  // final List<Data> _incomingQueue = [];
-  //
-  // bool _processingQueue = false; //付け足した
-
   // 指定のアドレスを持つデータがあるかどうかを返す
   bool contains(String address) {
     return _data.containsKey(address);
@@ -55,115 +50,15 @@ class DeviceManager extends ChangeNotifier {
   List<Data> get data => _data.values.toList(); // UI 用に List を返す
 
   bool get isScanning => _isScanning; //他のクラスから「isScanning」がつかえるようにする
-  //
-  // // 受信ハンドラ内で newDevice を作った直後に seq を振る代わりに enqueue する
-  //   void _onDeviceRawReceived(Data newDevice) {
-  //     newDevice.seq = ++_seqCounter;
-  //     _enqueueIncoming(newDevice);
-  //   }
-  //
-  //   void _enqueueIncoming(Data d) {
-  //     _incomingQueue.add(d);
-  //     if (!_processingQueue) {
-  //       _processIncomingQueue();
-  //     }
-  //   }
-  //
-  // // 逐次処理ループ：FIFOで1件ずつ適用する
-  //   Future<void> _processIncomingQueue() async {
-  //     _processingQueue = true;
-  //     bool hasChanged = false; // 変更フラグ
-  //
-  //     try {
-  //       while (_incomingQueue.isNotEmpty) {
-  //         final newDevice = _incomingQueue.removeAt(0);
-  //         final address = newDevice.address;
-  //         final oldDevice = _data[address];
-  //
-  //         if (oldDevice == null) {
-  //           // 新規は構造変化 → 追加して親に通知
-  //           _data[address] = newDevice;
-  //           notifyListeners();
-  //         } else {
-  //           // 既存インスタンスを差し替えずに更新（UI 用 target を使う）
-  //           final target = _dbUIMap[address] ?? oldDevice;
-  //
-  //           final oldFeed = oldDevice.feed;
-  //           final newFeed = newDevice.feed;
-  //           final uiFeed = _dbUIMap[address]?.feed;
-  //
-  //           final oldBattery = oldDevice.battery;
-  //           final newBattery = newDevice.battery;
-  //           final uiBattery = _dbUIMap[address]?.battery;
-  //
-  //           debugPrint('oldFeed=$oldFeed, newFeed=$newFeed, uiFeed=$uiFeed');
-  //           debugPrint('oldBattery=$oldBattery, newBattery=$newBattery, uiBattery=$uiBattery');
-  //
-  //           final bool feedMatch = (oldFeed == newFeed) && (uiFeed != newFeed);
-  //           final bool batteryClose =
-  //               ((oldBattery - newBattery).abs() <= 8) &&
-  //                   (uiBattery != newBattery);
-  //
-  //           if (feedMatch || batteryClose) {
-  //             // if (target != null) {
-  //             //   final changed = target.updateFrom(newDevice); // Data が notify する
-  //             //   //if (changed) notifyListeners();
-  //             //   if (changed) hasChanged = true;
-  //             // }
-  //             if (target.feed != newFeed || target.battery != newBattery) {
-  //               final changed = target.updateFrom(newDevice);
-  //               if (changed) hasChanged = true;
-  //             }
-  //           } else {
-  //             if (target != null) {
-  //               final changed = target.updateDateOnly(
-  //                   newDevice.updateDate,
-  //                   newSeq: newDevice.seq
-  //               ); // Data が notify する
-  //               if (changed) hasChanged = true;
-  //               //if (changed) notifyListeners();
-  //             } else {
-  //
-  //               debugPrint(
-  //                 '[DeviceManager] Not showing update for $address (filter)',
-  //               );
-  //             }
-  //             _data[address] = newDevice;
-  //           }
-  //         }
-  //
-  //         // DB保存キューは従来どおり
-  //         _enqueueSave(newDevice);
-  //
-  //       }
-  //     } finally {
-  //       _processingQueue = false;
-  //       if (hasChanged)  notifyListeners();
-  //
-  //     }
-  //   }
+  final Map<String, Data> _dbSnapshot = {}; //DBから取得したデータを格納
 
   Future<void> loadAll() async {
     final list = await repo.getAllData(); // List<Map<String, dynamic>>
-    //既存の Map _data を空にして、キーを d.address、値を item にした MapEntry に、DB から取得したデータの要素を変換して一括で追加する
-    _data
+    _dbSnapshot //DBから取得したデータ
       ..clear()
       ..addEntries(
         list.map((Data item) => MapEntry(item.address, item)),
       ); //DB から取得したリストが Map に入る
-   // notifyListeners();
-    //     for (final item in list) {
-    //       final existing = _data[item.address];
-    //       final uiTarget = _dbUIMap[item.address] ?? existing;
-    //       if (existing != null) {
-    // // UI を壊さないように静かに上書き（notify を false）
-    //         existing.updateFrom(item);
-    //       } else {
-    // // 新規はそのまま追加（必要なら notify 制御）
-    //         _data[item.address] = item;
-    //       }
-    //     }
-    //     if (notify) notifyListeners();
   }
 
   //UI 側で呼ぶ。（ボタンを押したときなど）
@@ -236,64 +131,51 @@ class DeviceManager extends ChangeNotifier {
         }
 
         // ここで既存比較やキュー追加などの処理を続ける
-        final oldDevice = _data[address];
+        final oldDevice = _dbSnapshot[address]; //DBから取得したデータ
+        final uiDevice = _dbUIMap[address]; //UIに表示されているデータ
 
         if (oldDevice != null) {
           oldDevice.resumeReceiving(); // 受信再開時に強制停止フラグを解除
           if (newDevice.name == null || newDevice.name!.isEmpty) {
-            newDevice.name = oldDevice.name; //受信データにデバイス名がなければ、oldDeviceのデバイス名を使用
+            newDevice.name =
+                oldDevice.name; //受信データにデバイス名がなければ、oldDeviceのデバイス名を使用
           }
-        }
 
-        // if (oldDevice != null &&
-        //     (newDevice.name == null || newDevice.name!.isEmpty)) {
-        //   newDevice.name = oldDevice.name;
-        // }
-        if (oldDevice == null) {
-          // 新規：常に追加して UI 表示
-          _data[address] = newDevice;
-          notifyListeners();
-        } else {
-          final oldFeed = oldDevice.feed;
-          final newFeed = newDevice.feed;
-          final uiFeed = _dbUIMap[address]?.feed;
+          if (uiDevice != null) {
+            final oldFeed = oldDevice.feed;
+            final newFeed = newDevice.feed;
+            final uiFeed = uiDevice.feed;
 
-          final oldBattery = oldDevice.battery;
-          final newBattery = newDevice.battery;
-          final uiBattery = _dbUIMap[address]?.battery;
+            final oldBattery = oldDevice.battery;
+            final newBattery = newDevice.battery;
+            final uiBattery = uiDevice.battery;
 
-          // // 既存あり: 条件判定 _dbUI:画面に表示されているデータ
-          final bool feedMatch = (oldFeed == newFeed) && (uiFeed!=null && uiFeed != newFeed);
-          final bool batteryClose =
-              ((oldBattery - newBattery).abs() <= 8) &&
-              (uiBattery!=null && uiBattery != newBattery);
-
-          debugPrint('oldFeed=$oldFeed, newFeed=$newFeed, uiFeed=$uiFeed');
-          debugPrint(
-            'oldFeed=$oldBattery, newFeed=$newBattery, uiFeed=$uiBattery',
-          );
-
-          if (feedMatch || batteryClose) {
-            final target = _dbUIMap[address];
-            if (target != null) {
-              target.updateFrom(newDevice,updateBattery: batteryClose);
-            }
-          } else {
-            //日付のみ変更
-            final target = _dbUIMap[address];
-            if (target != null) {
-              target.updateDate = newDevice.updateDate;
-              target.notifyListeners(); // 通知も必要！（これがないと rebuild しない）
-            }
-            // どちらも満たさない: UI は更新しない
+            debugPrint('oldFeed=$oldFeed, newFeed=$newFeed, uiFeed=$uiFeed');
             debugPrint(
-              '[DeviceManager] Not showing update for $address (filter)',
+              'oldFeed=$oldBattery, newFeed=$newBattery, uiFeed=$uiBattery',
             );
+
+            // 既存あり: 条件判定
+            final bool feedMatch = (oldFeed == newFeed) && (uiFeed != newFeed);
+            final bool batteryClose =
+                ((oldBattery - newBattery).abs() <= 8) &&
+                (uiBattery != newBattery);
+
+            //条件に一致する場合
+            if (feedMatch || batteryClose) {
+              uiDevice.updateFrom(newDevice, updateBattery: true);
+              notifyListeners();
+            } else {
+              //日付のみ更新
+              uiDevice.updateDate = newDevice.updateDate;
+              notifyListeners();
+            }
+
+            //新規デバイスの場合そのままUI表示
+          } else {
+            _data[address] = newDevice;
+            notifyListeners();
           }
-          _data[address] = newDevice;
-          debugPrint(
-            '→ _data[address] に newDevice を保存: feed=${newDevice.feed},battery=${newDevice.battery}',
-          );
         }
         // DB保存用キューに入れる等
         _enqueueSave(newDevice);

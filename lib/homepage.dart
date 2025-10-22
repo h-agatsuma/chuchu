@@ -230,16 +230,12 @@ class _MyHomePageState extends State<MyHomePage> {
         final baseDbList = _sortedByName
             ? _nameSort(List<Data>.from(_dbData))
             : List<Data>.from(_dbData);
-        final dbUI = _mergeDbAndLive(baseDbList, deviceManager.data);
+        final dbUI = _mergeDbAndLive(baseDbList, deviceManager.data,deviceManager);
 
         // Mapを作成（addressをキーにしたMap）
         final Map<String, Data> dbUIMap = {for (var d in dbUI) d.address: d};
         //UIに表示しているデータをdeviceManagerでも使えるようにする
        deviceManager.updateDbUI(dbUIMap);
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          deviceManager.updateDbUI(dbUIMap);
-        });
 
         return Scaffold(
           appBar: AppBar(
@@ -367,7 +363,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   //DBデータとBLEデータをマージ
-  List<Data> _mergeDbAndLive(List<Data> dbData, List<Data> liveData) {
+  List<Data> _mergeDbAndLive(List<Data> dbData, List<Data> liveData, DeviceManager manager) {
     final dbAddresses = dbData.map((d) => d.address).toSet();
     final Map<String, Data> result = {
       for (var d in dbData) d.address: d, // DBのデータがベース
@@ -376,11 +372,15 @@ class _MyHomePageState extends State<MyHomePage> {
     final now = DateTime.now();
     for (var ld in liveData) {
       if (dbAddresses.contains(ld.address)) {
-        result[ld.address] = ld; // BLE受信データで上書き
+        //result[ld.address] = ld; // BLE受信データで上書き
+        final ble = manager.getData(ld.address); // BLE 側のインスタンスを使う
+        if (ble != null) result[ld.address] = ble;
       } else {
         // 未登録だが受信が5分以内なら表示
         if (now.difference(ld.updateDate).inMinutes <= 5) {
-          result[ld.address] = ld;
+          //result[ld.address] = ld;
+          final ble = manager.getData(ld.address);
+          if (ble != null) result[ld.address] = ble;
         }
       }
     }
