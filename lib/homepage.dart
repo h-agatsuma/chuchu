@@ -415,7 +415,6 @@ Widget _buildRow(
               child: Icon(
                 Icons.bolt,
                 color: (isLive && data.isReceiving) ? Colors.black : Colors.transparent, //データ未受信の際はアイコン透明に。
-                //color: (isLive) ? Colors.black : Colors.transparent, //データ未受信の際はアイコン透明に。
               ),
             ),
             SizedBox(

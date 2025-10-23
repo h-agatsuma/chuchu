@@ -30,9 +30,12 @@ class DeviceManager extends ChangeNotifier {
 
   Map<String, Data> _dbUIMap = {}; // ← UIに表示されている値（Map）を一時的に保持しておく変数
 
-  //homepageのdbUIMapの値を使えるようにする。
+  //_dataインスタンスを参照し、homepageのdbUIMapの値を使えるようにする。
   void updateDbUI(Map<String, Data> newDbUIMap) {
-    _dbUIMap = newDbUIMap;
+    _dbUIMap = {
+      for (final e in newDbUIMap.entries)
+        e.key: _data[e.key] ?? e.value,
+    };
   }
 
   bool _isScanning = false; //探索中かどうか
@@ -67,6 +70,12 @@ class DeviceManager extends ChangeNotifier {
     List<Map<String, dynamic>>? simulatedList,
   }) {
     print('[DeviceManager] startScan called simulated=$simulated');
+
+// スキャン開始時に受信状態をリセット（アイコンOFF）
+    for (final d in _data.values) {
+      d.forceStopReceiving(); // ← updateDateは保持
+    }
+
     if (_deviceSub != null) {
       print('[DeviceManager] already subscribed, returning');
       return;
@@ -164,12 +173,15 @@ class DeviceManager extends ChangeNotifier {
             //条件に一致する場合
             if (feedMatch || batteryClose) {
               uiDevice.updateFrom(newDevice, updateBattery: true);
+              uiDevice.resumeReceiving();
               notifyListeners();
             } else {
               //日付のみ更新
               uiDevice.updateDate = newDevice.updateDate;
+              uiDevice.resumeReceiving();
               notifyListeners();
             }
+            _data[address] = uiDevice;
 
             //新規デバイスの場合そのままUI表示
           } else {

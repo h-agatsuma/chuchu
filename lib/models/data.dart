@@ -30,13 +30,12 @@ class Data extends ChangeNotifier {
   // // 現在が「受信から3秒以内」かどうかを返すプロパティ 今は受信スピードに合わせて12秒
   bool get isReceiving =>
       !_forceStale && //_forceStaleがfalse=受信中で、更新日時が12秒以内ならisReceiving=true(アイコン表示判定)
-      DateTime.now().difference(updateDate).inSeconds <= 20;
+      DateTime.now().difference(updateDate).inSeconds <= 12;
 
   // 受信を強制停止（STOP SCANNING 時に呼ぶ）
   void forceStopReceiving() {
     _forceStale = true; //未受信扱い
     _staleTimer?.cancel(); // タイマーがあればキャンセル
-    //notifyListeners();
   }
 
   void resumeReceiving() {
