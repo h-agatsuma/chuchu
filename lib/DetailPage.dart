@@ -4,13 +4,14 @@ import 'db/database_helper1.dart';
 import 'db/device_dao.dart';
 import 'db/reception_dao.dart';
 import 'package:form_field_validator/form_field_validator.dart';
+import 'ble/device_manager.dart';
 
 class DetailPage extends StatefulWidget {
   final String macAddress;
   final String? name;
+  final DeviceManager deviceManager;
 
-  DetailPage({super.key, required this.macAddress, this.name});
-
+  DetailPage({super.key, required this.macAddress, this.name,required this.deviceManager});
   @override
   _DetailPageState createState() => _DetailPageState();
 }
@@ -157,11 +158,31 @@ class _DetailPageState extends State<DetailPage> {
   // subscribe ボタンクリック
   void _insOrReplace() async {
     final nameText = nameController.text; //テキストフィールドに入力された名前を取得
+
+    // // DeviceManager からメモリ上の最新データを取得
+    final data = widget.deviceManager.getData(widget.macAddress);
+    final dbData= await receptionDao.checkReception(widget.macAddress);
+
     Map<String, dynamic> rowdev = {
       DatabaseHelper.columnDeviceAddress: widget.macAddress,
       DatabaseHelper.columnName: nameText,
     };
-    await deviceDao.upsertDevice(rowdev);
+
+    Map<String, dynamic> rowrec = {
+      DatabaseHelper.columnDeviceAddress: widget.macAddress,
+    };
+
+    // UI に表示されている最新値があるがインサート前の場合、 reception 用にUIの値を渡す
+    if (data != null && dbData ==false) {
+      rowrec['feed'] = data.feed;
+      rowrec['battery'] = data.battery;
+      rowrec['updateDate'] =
+          DateFormat('yyyy-MM-dd HH:mm:ss').format(data.updateDate);
+
+      await receptionDao.insertReception(rowrec); //receptionInfoにインサート
+    }
+
+    await deviceDao.upsertDevice(rowdev); //deviceInfoにupsert
 
     //登録完了フラグを前ページに渡す
     Navigator.pop(context, {

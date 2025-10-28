@@ -1,5 +1,6 @@
 import 'package:test3/db/database_helper1.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:test3/models/data.dart';
 
 //受信情報
 class ReceptionDao{
@@ -7,17 +8,26 @@ class ReceptionDao{
   final DatabaseHelper dbHelper;
   ReceptionDao(this.dbHelper);
 
-  // 登録（同じアドレスがあれば更新処理）
+//　該当データが存在するか確認（デバイス名を変更する際、インサート前ではないかチェック）
+  Future<bool> checkReception(String address) async {
+    final db = await dbHelper.database;
+    final rows = await db.query(
+      'receptionInfo',
+      where: 'address = ?',
+      whereArgs: [address],
+      limit: 1,
+    );
+    return rows.isNotEmpty;
+  }
+
+  // 登録
   Future<int> insertReception(Map<String, dynamic> row) async {
     final db = await dbHelper.database;
     return await db.insert(
       DatabaseHelper.tableReception,
       row,
-      conflictAlgorithm: ConflictAlgorithm.replace, //同じアドレスがあれば更新処理
     );
   }
-
-
 
   //　受信情報更新
   Future<int> updateReception(Map<String, dynamic> row) async {
@@ -48,19 +58,6 @@ class ReceptionDao{
     if (rows.isEmpty) return;
     final db = await dbHelper.database;
     print('[ReceptionDao] DB path=${db.path}');
-
-
-    // await db.transaction((txn) async {
-    //   final batch = txn.batch();
-    //   for (final row in rows) {
-    //     batch.insert(
-    //       DatabaseHelper.tableReception,
-    //       row,
-    //       conflictAlgorithm: ConflictAlgorithm.replace,
-    //     );
-    //   }
-    //   await batch.commit(noResult: true);
-    // });
 
     try {
       await db.transaction((txn) async {

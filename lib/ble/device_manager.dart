@@ -168,11 +168,11 @@ class DeviceManager extends ChangeNotifier {
             final bool feedMatch = (oldFeed == newFeed) && (uiFeed != newFeed);
             final bool batteryClose =
                 ((oldBattery - newBattery).abs() <= 8) &&
-                (uiBattery != newBattery);
+                    (uiBattery != newBattery);
 
             //条件に一致する場合
             if (feedMatch || batteryClose) {
-              uiDevice.updateFrom(newDevice, updateBattery: true);
+              uiDevice.updateFrom(newDevice);
               uiDevice.resumeReceiving();
               notifyListeners();
             } else {
@@ -181,13 +181,12 @@ class DeviceManager extends ChangeNotifier {
               uiDevice.resumeReceiving();
               notifyListeners();
             }
-            _data[address] = uiDevice;
-
-            //新規デバイスの場合そのままUI表示
-          } else {
-            _data[address] = newDevice;
-            notifyListeners();
+            _data[address] = uiDevice; //アイコン表示（_forceStale = falseを更新）
           }
+          //新規デバイスの場合そのままUI表示
+        }else{
+          _data[address] = newDevice;
+          notifyListeners();
         }
         // DB保存用キューに入れる等
         _enqueueSave(newDevice);

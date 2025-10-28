@@ -42,7 +42,7 @@ class Data extends ChangeNotifier {
     _forceStale = false;
   }
 
-  bool updateFrom(Data newData, {bool updateBattery = true}) {
+  bool updateFrom(Data newData) {
     bool changed = false;
     debugPrint('[Data] updateFrom() called: $address');
     if (name != newData.name) {
@@ -53,7 +53,7 @@ class Data extends ChangeNotifier {
       feed = newData.feed;
       changed = true;
     }
-    if (updateBattery && battery != newData.battery) {
+    if (battery != newData.battery) {
       debugPrint('[Data] Battery changed: ${battery} → ${newData.battery}');
       battery = newData.battery;
       changed = true;
@@ -67,16 +67,18 @@ class Data extends ChangeNotifier {
   }
 
   //「Map（DB の行や JSON など）から Data のインスタンスを作る」ためのコンストラクタ。読み込み用
-  factory Data.fromMap(Map<String, dynamic> m) => Data(
-    address: m['address'] as String,
-    name: m['name'] as String? ?? '',
-    id: m['id'] as int?,
-    updateDate: DateFormat(
-      'yyyy-MM-dd HH:mm:ss',
-    ).parse(m['updateDate'] as String),
-    feed: m['feed'] as int? ?? 0,
-    battery: m['battery'] as int,
-  );
+  factory Data.fromMap(Map<String, dynamic> m) {
+    debugPrint('Data.fromMap input: $m');
+
+    return Data(
+      address: m['address'] as String,
+      name: m['name'] as String? ?? '',
+      id: m['id'] as int?,
+      updateDate: DateFormat('yyyy-MM-dd HH:mm:ss').parse(m['updateDate'] as String),
+      feed: m['feed'] as int? ?? 0,
+      battery: m['battery'] as int,
+    );
+  }
 
   //Data のインスタンスを Map に変換する⇒DB への挿入、JSON 化に使う。保存・送信用
   Map<String, dynamic> toMap() => {

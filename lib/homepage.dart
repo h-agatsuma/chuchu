@@ -90,12 +90,12 @@ class _MyHomePageState extends State<MyHomePage> {
       context,
       MaterialPageRoute(
         builder: (context) =>
-            DetailPage(name: data.name, macAddress: data.address),
+            DetailPage(name: data.name, macAddress: data.address,deviceManager:context.read<DeviceManager>()),
       ),
     );
 
     //result：detailPageから渡される「更新されたかどうか」「アドレス」「名前」の情報
-    //名前と日時を変更
+    //名前を変更
     if (result is Map) {
       final address = result['address'] as String?;
       if (address == null) return;
@@ -133,6 +133,8 @@ class _MyHomePageState extends State<MyHomePage> {
             liveData.updateFrom(tmp); // Data.notifyListeners() が行を更新
           }
         }
+        //loadAllを呼び、oldDeviceに登録したデータが入るようにする
+        await deviceManager.loadAll();
       }
 
       //DetailPageで削除されたとき
@@ -460,7 +462,7 @@ class StaticDataRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _buildRow(context, data, false, () async {
-      // 詳細画面を開けるようにする（必要なら）
+      // 詳細画面を開けるようにする
       final homeState = context.findAncestorStateOfType<_MyHomePageState>();
       if (homeState != null) await homeState._openDetailAndApply(data);
     });
