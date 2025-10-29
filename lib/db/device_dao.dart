@@ -63,6 +63,17 @@ class DeviceDao {
     );
   }
 
+  //　該当データが存在するか確認（登録されていない場合、unsubscribeボタンを無効にするため）
+  Future<bool> checkDevice(String address) async {
+    final db = await dbHelper.database;
+    final rows = await db.query(
+      'deviceInfo',
+      where: 'address = ?',
+      whereArgs: [address],
+    );
+    return rows.isNotEmpty;
+  }
+
   Future<List<Map<String, dynamic>>> queryAllDevices() async {
     final db = await dbHelper.database;
     return await db.query(DatabaseHelper.tableDevice);

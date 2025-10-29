@@ -22,6 +22,8 @@ class _DetailPageState extends State<DetailPage> {
   late final receptionDao = ReceptionDao(dbHelper);
   late TextEditingController nameController;
   final _formKey = GlobalKey<FormState>();
+  bool? _dbData; //DBにデータがあるかどうか
+
 
   @override
   void initState() {
@@ -32,7 +34,15 @@ class _DetailPageState extends State<DetailPage> {
           ? widget.name!
           : "",
     );
+    _loadDb(); //非同期処理は別関数で呼ぶ
   }
+
+  //deviceInfoに登録されているかどうかをチェック
+  Future<void> _loadDb() async {
+    final result = await deviceDao.checkDevice(widget.macAddress);
+    setState(() => _dbData = result);
+  }
+
 
   @override
   void dispose() {
@@ -42,6 +52,7 @@ class _DetailPageState extends State<DetailPage> {
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -118,7 +129,7 @@ class _DetailPageState extends State<DetailPage> {
                       ),
                       const SizedBox(width: 20), // ボタン間の余白
                       ElevatedButton(
-                        onPressed: _delete, //デリートメソッド
+                        onPressed:  (_dbData?? false)? _delete : null, //登録済みならデリートメソッド、未登録なら無効化
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size(150, 80),
                           backgroundColor: const Color(0xFF999966),
